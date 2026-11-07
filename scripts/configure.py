@@ -1,4 +1,4 @@
-"""Company, chart, catalog, and a sample draft invoice.
+"""Company, chart, catalog, and removal of the sample draft invoice.
 
 Executed inside `odoo shell`, which provides `env` and `stage`.
 `stage` is either "company" (before Accounting is installed) or "books".
@@ -11,7 +11,7 @@ sys.path.insert(0, "/opt/blurby")
 
 import catalog_data  # noqa: E402
 
-COMPANY_NAME = "BLURBY Korlátolt Felelősségű Társaság"
+COMPANY_NAME = "Hagen Group Kft."
 VAT = "25979923-2-41"
 REGISTRY = "01-09-299788"
 SAMPLE_REF = "BLURBY-SAMPLE-DRAFT"
@@ -133,7 +133,7 @@ def books_stage():
         raise SystemExit(f"VAT stored as {company.vat!r}, expected {VAT}")
 
     company.company_details = (
-        "<p>BLURBY Korlátolt Felelősségű Társaság<br/>"
+        "<p>Hagen Group Kft.<br/>"
         "1053 Budapest, Kecskeméti utca 5.<br/>"
         "Cégjegyzékszám: 01-09-299788<br/>"
         "Adószám: 25979923-2-41<br/>"
@@ -152,12 +152,14 @@ def books_stage():
         company.partner_id.lang = "hu_HU"
 
     workshop = env["res.partner"].search([
-        ("name", "=", "Blurby workshop"),
+        ("name", "in", ["Blurby workshop", "Hagen Group workshop"]),
         ("parent_id", "=", company.partner_id.id),
     ], limit=1)
-    if not workshop:
+    if workshop:
+        workshop.name = "Hagen Group workshop"
+    else:
         env["res.partner"].create({
-            "name": "Blurby workshop",
+            "name": "Hagen Group workshop",
             "type": "delivery",
             "parent_id": company.partner_id.id,
             "street": "Öntő utca 5.",
@@ -233,51 +235,16 @@ def books_stage():
     if abs(on_hand - 935) > 1e-6:
         raise SystemExit(f"A27 on hand is {on_hand}, expected 935")
 
-    sample_partner = env["res.partner"].search([("name", "=", "Sample customer (delete me)")], limit=1)
-    if not sample_partner:
-        sample_partner = env["res.partner"].create({
-            "name": "Sample customer (delete me)",
-            "is_company": True,
-            "country_id": env.ref("base.hu").id,
-            "city": "Budapest",
-            "zip": "1051",
-            "street": "Példa utca 1.",
-            "lang": "hu_HU" if hungarian else "en_US",
-            "customer_rank": 1,
-            "comment": "Placeholder so the invoice screen is not empty. Delete it.",
-        })
-
-    bike = env["product.product"].search([("default_code", "=", "M-001")], limit=1)
-    invoice = env["account.move"].search([
+    sample_invoices = env["account.move"].search([
         ("ref", "=", SAMPLE_REF),
-        ("move_type", "=", "out_invoice"),
+        ("state", "=", "draft"),
         ("company_id", "=", company.id),
-    ], limit=1)
-    if not invoice:
-        invoice = env["account.move"].create({
-            "move_type": "out_invoice",
-            "partner_id": sample_partner.id,
-            "ref": SAMPLE_REF,
-            "narration": (
-                "Sample draft only. It is not a real sale and it is not sent to NAV. "
-                "Delete it before you issue the first customer invoice. "
-                "The 10,000 Ft price is a placeholder so you can see 27% ÁFA; "
-                "the product's own sales price is still empty."
-            ),
-            "invoice_line_ids": [(0, 0, {
-                "product_id": bike.id,
-                "quantity": 1,
-                "price_unit": 10000.0,
-                "tax_ids": [(6, 0, goods_sale.ids)],
-            })],
-        })
-    if invoice.state != "draft":
-        raise SystemExit(f"sample invoice is {invoice.state}, expected draft")
-    if abs(invoice.amount_tax - 2700) > 0.01 or abs(invoice.amount_total - 12700) > 0.01:
-        raise SystemExit(
-            f"sample tax math failed: untaxed={invoice.amount_untaxed} "
-            f"tax={invoice.amount_tax} total={invoice.amount_total}"
-        )
+    ])
+    sample_invoices.unlink()
+    sample_partners = env["res.partner"].search([("name", "=", "Sample customer (delete me)")])
+    for partner in sample_partners:
+        if not env["account.move"].search_count([("partner_id", "=", partner.id)]):
+            partner.unlink()
 
     english = env["res.lang"].with_context(active_test=False).search([("code", "=", "en_US")], limit=1)
     if english and not english.active:
@@ -305,7 +272,6 @@ def books_stage():
         company.chart_template,
         company.l10n_hu_edi_server_mode,
         f"parts={part_count}",
-        f"sample_total={invoice.amount_total}",
     )
 
 

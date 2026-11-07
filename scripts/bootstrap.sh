@@ -73,12 +73,21 @@ if ! db_exists; then
 fi
 
 if [[ "$version" != "1" ]]; then
-  echo "Writing the Blurby company"
+  echo "Writing the Hagen Group company"
   run_shell company
   echo "Installing invoicing, sales, inventory, and Hungarian localization"
   "${COMPOSE[@]}" run --rm --no-deps odoo odoo -d blurby -i sale_management,stock,l10n_hu,l10n_hu_edi --without-demo=all --stop-after-init
-  echo "Loading the chart of accounts, parts, and a sample draft invoice"
+  echo "Loading the chart of accounts and parts"
   run_shell books
+fi
+
+if db_exists; then
+  commerce="$("${COMPOSE[@]}" exec -T db psql -U odoo -d blurby -tAc "SELECT state FROM ir_module_module WHERE name='hagen_commerce'" 2>/dev/null | tr -d '[:space:]' || true)"
+  if [[ "$commerce" != "installed" ]]; then
+    echo "Installing manufacturing and the WooCommerce connector"
+    "${COMPOSE[@]}" stop odoo >/dev/null 2>&1 || true
+    "${COMPOSE[@]}" run --rm --no-deps odoo odoo -d blurby -i hagen_commerce --without-demo=all --stop-after-init
+  fi
 fi
 
 echo "Starting Odoo"

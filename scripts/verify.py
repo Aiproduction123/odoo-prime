@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the running Blurby ledger from outside the containers."""
+"""Check the running Hagen Group ledger from outside the containers."""
 
 import sys
 import urllib.request
@@ -48,7 +48,7 @@ def main():
         limit=1,
     )[0]
     checks = {
-        "name": company["name"] == "BLURBY Korlátolt Felelősségű Társaság",
+        "name": company["name"] == "Hagen Group Kft.",
         "vat": company["vat"] == "25979923-2-41",
         "registry": company["company_registry"] == "01-09-299788",
         "address": company["zip"] == "1053" and company["city"] == "Budapest" and company["street"] == "Kecskeméti utca 5.",
@@ -63,11 +63,11 @@ def main():
 
     modules = execute(
         models, uid, password, "ir.module.module", "search_read",
-        [("name", "in", ["account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock"]), ("state", "=", "installed")],
+        [("name", "in", ["account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock", "mrp", "hagen_commerce"]), ("state", "=", "installed")],
         fields=["name"],
     )
     installed = {row["name"] for row in modules}
-    missing = {"account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock"} - installed
+    missing = {"account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock", "mrp", "hagen_commerce"} - installed
     if missing:
         raise SystemExit(f"modules not installed: {sorted(missing)}")
 
@@ -84,24 +84,49 @@ def main():
     if not quant or abs(quant[0]["quantity"] - 935) > 1e-6:
         raise SystemExit(f"A27 quantity unexpected: {quant}")
 
-    invoice = execute(
-        models, uid, password, "account.move", "search_read",
-        [("ref", "=", "BLURBY-SAMPLE-DRAFT")],
-        fields=["state", "amount_untaxed", "amount_tax", "amount_total", "currency_id"],
+    leftover = execute(models, uid, password, "account.move", "search_count", [("ref", "=", "BLURBY-SAMPLE-DRAFT")])
+    if leftover:
+        raise SystemExit("sample draft invoice is still present")
+    leftover_partner = execute(
+        models, uid, password, "res.partner", "search_count",
+        [("name", "=", "Sample customer (delete me)")],
+    )
+    if leftover_partner:
+        raise SystemExit("sample customer is still present")
+
+    journal = execute(
+        models, uid, password, "account.journal", "search_read",
+        [("code", "=", "STRP"), ("company_id", "=", 1)],
+        fields=["name", "type"],
         limit=1,
     )
-    if not invoice:
-        raise SystemExit("sample draft invoice is missing")
-    row = invoice[0]
-    if row["state"] != "draft" or abs(row["amount_tax"] - 2700) > 0.01 or abs(row["amount_total"] - 12700) > 0.01:
-        raise SystemExit(f"sample invoice unexpected: {row}")
+    if not journal or journal[0]["name"] != "Stripe Payments" or journal[0]["type"] != "bank":
+        raise SystemExit(f"Stripe journal unexpected: {journal}")
+
+    stores = execute(
+        models, uid, password, "hagen.woo.store", "search_count",
+        [],
+        context={"active_test": False},
+    )
+    if stores < 2:
+        raise SystemExit(f"expected two WooCommerce stores, found {stores}")
+
+    bikes = execute(
+        models, uid, password, "product.template", "search_read",
+        [("default_code", "=like", "M-%")],
+        fields=["default_code", "is_storable", "type"],
+    )
+    if len(bikes) < 8 or any(not row["is_storable"] or row["type"] != "consu" for row in bikes):
+        raise SystemExit(f"bikes are not all storable: {bikes}")
 
     print(
         "OK",
         company["name"],
         company["vat"],
+        company["l10n_hu_edi_server_mode"],
         f"parts={parts}",
-        f"sample={row['amount_untaxed']}+{row['amount_tax']}={row['amount_total']} {row['currency_id'][1]}",
+        f"stores={stores}",
+        "journal=STRP",
     )
 
 

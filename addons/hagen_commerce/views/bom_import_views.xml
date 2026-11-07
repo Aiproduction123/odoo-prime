@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hagen_bom_import_form" model="ir.ui.view">
+        <field name="name">hagen.bom.import.form</field>
+        <field name="model">hagen.bom.import</field>
+        <field name="arch" type="xml">
+            <form string="Import bike recipes">
+                <group>
+                    <field name="file" filename="filename"/>
+                    <field name="filename" invisible="1"/>
+                </group>
+                <p>
+                    Only rows with status confirmed are loaded. Rows marked needs_confirmation stay out of the books.
+                    Use kit so a delivery deducts the parts, or manufacture when the workshop should get a manufacturing order.
+                </p>
+                <footer>
+                    <button name="action_import" type="object" string="Import confirmed rows" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hagen_bom_import" model="ir.actions.act_window">
+        <field name="name">Import bike recipes</field>
+        <field name="res_model">hagen.bom.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_hagen_bom_import" name="Import bike recipes" parent="mrp.menu_mrp_root" action="action_hagen_bom_import" sequence="30"/>
+</odoo>

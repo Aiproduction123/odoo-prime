@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hagen_woo_store_list" model="ir.ui.view">
+        <field name="name">hagen.woo.store.list</field>
+        <field name="model">hagen.woo.store</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="base_url"/>
+                <field name="active"/>
+                <field name="last_order_sync"/>
+                <field name="last_stock_sync"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hagen_woo_store_form" model="ir.ui.view">
+        <field name="name">hagen.woo.store.form</field>
+        <field name="model">hagen.woo.store</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_test_connection" type="object" string="Test connection" class="btn-primary"/>
+                    <button name="action_pull_orders" type="object" string="Pull paid orders"/>
+                    <button name="action_push_stock" type="object" string="Push stock"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Store name"/></h1>
+                    </div>
+                    <group>
+                        <group string="WooCommerce">
+                            <field name="base_url" placeholder="https://shop.example.com"/>
+                            <field name="consumer_key"/>
+                            <field name="consumer_secret" password="True"/>
+                            <field name="warehouse_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Paid orders">
+                            <field name="payment_gateway"/>
+                            <field name="payment_journal_id"/>
+                            <field name="auto_confirm"/>
+                            <field name="auto_invoice"/>
+                            <field name="auto_pay"/>
+                            <field name="stock_sync"/>
+                        </group>
+                    </group>
+                    <group string="Last sync">
+                        <field name="last_order_sync"/>
+                        <field name="last_stock_sync"/>
+                        <field name="last_sync_message"/>
+                        <field name="webhook_token" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hagen_woo_store" model="ir.actions.act_window">
+        <field name="name">WooCommerce stores</field>
+        <field name="res_model">hagen.woo.store</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <menuitem id="menu_hagen_woo_store" name="WooCommerce stores" parent="sale.sale_menu_root" action="action_hagen_woo_store" sequence="45"/>
+</odoo>

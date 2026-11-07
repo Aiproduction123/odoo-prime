@@ -32,6 +32,7 @@ services:
     volumes:
       - blurby-data:/var/lib/odoo
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./addons:/mnt/extra-addons
       - ./scripts:/opt/blurby:ro
     restart: unless-stopped
 

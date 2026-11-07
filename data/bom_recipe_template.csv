@@ -1,0 +1,29 @@
+bike_code,part_code,qty_per_bike,bom_type,status,note
+M-001,A50,1,kit,needs_confirmation,Inventory sheet calls this a wheel. A50 in the catalog is Blurby frame raw L. Do not confirm until the part code is checked.
+M-001,A34,1,kit,needs_confirmation,Sheet part name is blank. A34 in the catalog is a grip lock ring.
+M-004,A13,1,kit,needs_confirmation,Sheet line is a 22T cassette belt sprocket. Confirm this is the right part for Blurby 1st gen.
+M-004,A21,1,kit,needs_confirmation,Sheet line is a 2nd gen belt. On-hand count is 0. Confirm the code before loading.
+M-005,A62,1,kit,needs_confirmation,Sheet says Flagship frame. A62 is the electric frame. The non-electric Flagship frame is A61.
+M-005,A70,1,kit,needs_confirmation,Sheet line is a Shimano ZEE 36T chainring. Confirm quantity and that this model uses it.
+M-005,A127,1,kit,needs_confirmation,Sheet line is an SKS mudguard plastic.
+M-005,A111,1,kit,needs_confirmation,Sheet line is the left Flagship side panel, black.
+M-005,A112,1,kit,needs_confirmation,Sheet line is the right Flagship side panel, gray.
+M-005,A117,1,kit,needs_confirmation,Sheet line is a 28.7 seatpost clamp.
+M-005,A121,1,kit,needs_confirmation,Sheet line is a Shimano RT-MT800 rotor.
+M-005,A129,1,kit,needs_confirmation,Sheet line is a kickstand XL.
+M-006,A63,1,kit,needs_confirmation,Sheet links A63. A63 is the XL non-electric frame. The electric Flagship frame is A62.
+M-006,A79,1,kit,needs_confirmation,Sheet calls this a Brose display, then later a Brose midmotor. The midmotor in the catalog is A78.
+M-006,A81,1,kit,needs_confirmation,Sheet line is a battery holder.
+M-006,A127,1,kit,needs_confirmation,Sheet line is an SKS mudguard plastic.
+M-007,A64,1,kit,needs_confirmation,Sheet links A64. A64 is the XL electric frame. M-007 is the XL non-electric bike, whose frame is A63.
+M-007,A127,1,kit,needs_confirmation,Sheet line is an SKS mudguard plastic.
+M-008,A65,1,kit,needs_confirmation,Sheet links A65. A65 is the Hagen fork. The XL electric frame is A64.
+M-008,A79,1,kit,needs_confirmation,Sheet line is a Brose display. Confirm it is not the midmotor A78.
+M-008,A81,1,kit,needs_confirmation,Sheet line is a battery holder.
+HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: Flagship electric frame, quantity 1. No catalog code on the sheet. Fill part_code before confirming.
+HAGEN-SOM,,4,kit,needs_confirmation,SoM Hagen row: headset bearing 34mm, quantity 4. No catalog code on the sheet.
+HAGEN-SOM,,,kit,needs_confirmation,SoM Hagen row: rear hub gear and cassette. Quantity is blank and there is no catalog code.
+HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: front wheel 20 inch non-dynamo, quantity 1. No catalog code.
+HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: stiff fork, quantity 1. No catalog code.
+HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: chainring, note says many options. No catalog code.
+HAGEN-SOM,,,kit,needs_confirmation,SoM Hagen row: chainring spider. Quantity is blank and there is no catalog code.
