@@ -108,8 +108,17 @@ def main():
         [],
         context={"active_test": False},
     )
-    if stores < 2:
-        raise SystemExit(f"expected two WooCommerce stores, found {stores}")
+    if stores < 22:
+        raise SystemExit(f"expected the Rattaproff shops plus Blurby and Hagen, found {stores}")
+    rattaproff = execute(
+        models, uid, password, "hagen.woo.store", "search_read",
+        [("base_url", "=", "https://rattaproff.ee")],
+        fields=["name", "stock_sync", "network_id"],
+        context={"active_test": False},
+        limit=1,
+    )
+    if not rattaproff or rattaproff[0]["stock_sync"] or not rattaproff[0]["network_id"]:
+        raise SystemExit(f"Rattaproff shop is not linked to the network: {rattaproff}")
 
     bikes = execute(
         models, uid, password, "product.template", "search_read",

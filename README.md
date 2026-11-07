@@ -50,7 +50,7 @@ Stop it with `docker compose down`. That keeps the database. `docker compose dow
 
 ## WooCommerce stores
 
-Sales → WooCommerce stores. Two inactive stores are waiting: **Blurby store** and **Hagen store**. Add another record for any further shop. Each store needs:
+Sales → WooCommerce stores. **Blurby store** and **Hagen store** are inactive until you add their addresses and keys.
 
 | Field | Where it comes from |
 | --- | --- |
@@ -58,11 +58,23 @@ Sales → WooCommerce stores. Two inactive stores are waiting: **Blurby store** 
 | Consumer key | WooCommerce → Settings → Advanced → REST API. Create a key with Read/Write permission. |
 | Consumer secret | Shown once on that same WooCommerce screen. |
 
-Odoo is the inventory master. Every 15 minutes, each active store with those three values pushes sellable quantities to WooCommerce (`manage_stock` on) and pulls orders whose status is processing, completed, or the custom status `paid`, and that have a paid date. A kit bike’s sellable quantity is the number that can be built from free components. A bike with no recipe and no finished stock is pushed as zero, so the shop cannot oversell it.
+For those two shops, Odoo is the inventory master. Every 15 minutes, an active store with keys pushes sellable quantities to WooCommerce and pulls orders whose status is processing, completed, or the custom status `paid`, and that have a paid date. A kit bike’s sellable quantity is the number that can be built from free components. A bike with no recipe and no finished stock is pushed as zero.
 
-When the payment method contains `stripe`, a paid order is confirmed, invoiced with the product’s Hungarian VAT (27% ÁFA on goods), and the payment is booked on **Stripe Payments**, which marks the invoice Paid. Any other paid gateway is confirmed and invoiced, and the invoice is left open so it is not booked as a Stripe receipt.
+When the payment method matches the shop’s gateway list (Stripe, or WooPayments), the payment is booked on **Stripe Payments** and the invoice is Paid. Any other paid gateway is confirmed and invoiced, and the invoice is left open.
 
 The optional webhook is `POST /hagen/woo/<store id>/<webhook token>`. The token is on the store form. The scheduled sync does not need a public address.
+
+## Rattaproff multisite
+
+Sales → **WooCommerce network**. The network admin is `https://rattaproff.ee`. These shops are separate WooCommerce sites on that one WordPress install, and each already has an inactive store record:
+
+Rattaproff, Fahrrad 7, Cykelpoint.dk, Cykelpoint.se, Rowerkról.pl, Bicinegozio, Velocentras, Bicirey, Velochic, BajkRaj.hr, BajkRaj.cz, BajkRaj.si, BajkRaj.sk, Olabike, Tudobike, BikeRai, Velosklad, Visivelo, Polkimet, Fietsgear.
+
+One WordPress application password covers every shop. On rattaproff.ee, open Users → Profile → Application Passwords as a network super admin, create a password, and paste the username and password on the network form. Discover shops asks WordPress for the live site list and adds any shop that is not in the list above. A shop’s own REST key still overrides the shared password.
+
+Turn a shop active after the password is saved. Paid orders are confirmed and posted as customer invoices. The VAT is the rate Woo charged on that order (the Estonian shop charges 24%), not a flat Hungarian 27%. A line whose SKU is not in Odoo yet is created as a non-stock product so the invoice can still be posted. Stock is not pushed back to these shops, because their catalogs are the stock master.
+
+Euro invoices use the European Central Bank forint rate. The latest fixing loaded with this setup is 1 EUR = 363.90 HUF (6 November 2026). The scheduled sync refreshes that rate when the ECB publishes a new one. NAV stays in Demo, so these invoices are not reported.
 
 ## Bike recipes
 

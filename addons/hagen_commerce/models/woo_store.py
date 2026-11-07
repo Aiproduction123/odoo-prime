@@ -21,12 +21,18 @@ class HagenWooStore(models.Model):
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-    base_url = fields.Char(string='Store URL', help='Shop address, for example https://blurbybike.com. No trailing /wp-json path.')
+    network_id = fields.Many2one('hagen.woo.network', string='WordPress network', ondelete='set null')
+    blog_id = fields.Integer(string='Site id', help='WordPress multisite blog id, when the network reports one.')
+    base_url = fields.Char(string='Store URL', help='Shop address, for example https://rattaproff.ee. No trailing /wp-json path.')
     consumer_key = fields.Char(string='Consumer key')
     consumer_secret = fields.Char(string='Consumer secret')
     webhook_token = fields.Char(copy=False, default=lambda self: secrets.token_urlsafe(24))
     warehouse_id = fields.Many2one('stock.warehouse', string='Warehouse')
-    payment_gateway = fields.Char(default='stripe', required=True, help='Matched against the WooCommerce payment method id and title.')
+    payment_gateway = fields.Char(
+        default='stripe',
+        required=True,
+        help='Comma-separated words matched against the WooCommerce payment method id and title.',
+    )
     payment_journal_id = fields.Many2one(
         'account.journal',
         string='Stripe journal',
@@ -48,14 +54,23 @@ class HagenWooStore(models.Model):
             ('company_id', '=', self.env.company.id),
         ], limit=1)
 
+    def _auth(self):
+        self.ensure_one()
+        if self.consumer_key and self.consumer_secret:
+            return (self.consumer_key, self.consumer_secret)
+        if self.network_id:
+            return self.network_id._auth()
+        return None
+
     def _credentials_ok(self):
         self.ensure_one()
-        return bool(self.base_url and self.consumer_key and self.consumer_secret)
+        return bool(self.base_url and self._auth())
 
     def _woo_request(self, method, path, params=None, payload=None):
         self.ensure_one()
-        if not self._credentials_ok():
-            raise UserError(_('Store %s needs a URL, consumer key, and consumer secret.') % self.name)
+        auth = self._auth()
+        if not self.base_url or not auth:
+            raise UserError(_('Store %s needs a URL and either REST keys or a network application password.') % self.name)
         root = self.base_url.strip().rstrip('/')
         url = f'{root}/wp-json/wc/v3/{path.lstrip("/")}'
         try:
@@ -64,7 +79,7 @@ class HagenWooStore(models.Model):
                 url,
                 params=params,
                 json=payload,
-                auth=(self.consumer_key, self.consumer_secret),
+                auth=auth,
                 timeout=45,
             )
         except requests.RequestException as error:
@@ -124,6 +139,7 @@ class HagenWooStore(models.Model):
 
     @api.model
     def cron_sync(self):
+        self.env['hagen.woo.network']._ensure_ecb_rates()
         for store in self.search([('active', '=', True)]):
             if not store._credentials_ok():
                 continue
@@ -177,7 +193,7 @@ class HagenWooStore(models.Model):
                 ('default_code', '=', sku),
                 ('company_id', 'in', [False, self.company_id.id]),
             ], limit=1)
-            if not product or product.type == 'service':
+            if not product or not product.is_storable:
                 continue
             updates.append({
                 'id': woo_id,
@@ -225,8 +241,7 @@ class HagenWooStore(models.Model):
             return existing
         partner = self._partner_from_billing(payload.get('billing') or {})
         number = str(payload.get('number') or woo_id)
-        currency = self.env['res.currency'].search([('name', '=', (payload.get('currency') or '').upper())], limit=1)
-        order = self.env['sale.order'].create({
+        order_vals = {
             'partner_id': partner.id,
             'company_id': self.company_id.id,
             'warehouse_id': (self.warehouse_id or self.env['stock.warehouse'].search([
@@ -237,8 +252,11 @@ class HagenWooStore(models.Model):
             'hagen_woo_store_id': self.id,
             'hagen_woo_order_id': woo_id,
             'hagen_woo_number': number,
-            **({'currency_id': currency.id} if currency and currency.active else {}),
-        })
+        }
+        pricelist = self._pricelist_for_payload(payload)
+        if pricelist:
+            order_vals['pricelist_id'] = pricelist.id
+        order = self.env['sale.order'].create(order_vals)
         self._add_lines(order, payload)
         if not order.order_line:
             order.unlink()
@@ -257,10 +275,32 @@ class HagenWooStore(models.Model):
             return True
         return status in PAID_STATUSES and bool(payload.get('date_paid'))
 
-    def _is_stripe(self, payload):
-        needle = (self.payment_gateway or 'stripe').lower()
+    def _gateway_matches(self, payload):
+        needles = [part.strip().lower() for part in (self.payment_gateway or 'stripe').split(',') if part.strip()]
         haystack = f"{payload.get('payment_method') or ''} {payload.get('payment_method_title') or ''}".lower()
-        return needle in haystack
+        return any(needle in haystack for needle in needles)
+
+    def _pricelist_for_payload(self, payload):
+        code = (payload.get('currency') or '').upper()
+        if not code:
+            return self.env['product.pricelist']
+        currency = self.env['res.currency'].with_context(active_test=False).search([('name', '=', code)], limit=1)
+        if not currency or currency == self.company_id.currency_id:
+            return self.env['product.pricelist']
+        if not currency.active:
+            currency.active = True
+        self.env['hagen.woo.network']._ensure_ecb_rates([code])
+        pricelist = self.env['product.pricelist'].search([
+            ('currency_id', '=', currency.id),
+            ('company_id', 'in', [False, self.company_id.id]),
+        ], limit=1)
+        if not pricelist:
+            pricelist = self.env['product.pricelist'].create({
+                'name': f'WooCommerce {code}',
+                'currency_id': currency.id,
+                'company_id': self.company_id.id,
+            })
+        return pricelist
 
     def _partner_from_billing(self, billing):
         email = (billing.get('email') or '').strip()
@@ -293,17 +333,13 @@ class HagenWooStore(models.Model):
     def _add_lines(self, order, payload):
         OrderLine = self.env['sale.order.line']
         for item in payload.get('line_items') or []:
-            sku = (item.get('sku') or '').strip()
             qty = float(item.get('quantity') or 0)
-            if not sku or qty <= 0:
+            if qty <= 0:
                 continue
-            product = self.env['product.product'].search([
-                ('default_code', '=', sku),
-                ('company_id', 'in', [False, self.company_id.id]),
-            ], limit=1)
-            if not product:
-                order.message_post(body=_('Skipped WooCommerce line with unknown SKU %s.') % sku)
-                continue
+            sku = (item.get('sku') or '').strip()
+            if not sku:
+                sku = f"WOO-{item.get('product_id') or item.get('id') or 'line'}"
+            product = self._product_for_line(sku, item.get('name'))
             total = float(item.get('total') or 0)
             line = OrderLine.create({
                 'order_id': order.id,
@@ -311,6 +347,9 @@ class HagenWooStore(models.Model):
                 'product_uom_qty': qty,
             })
             line.price_unit = total / qty
+            tax = self._tax_for_item(payload, item)
+            if tax is not None:
+                line.tax_ids = tax
         shipping = float(payload.get('shipping_total') or 0)
         if shipping:
             product = self._shipping_product()
@@ -320,6 +359,82 @@ class HagenWooStore(models.Model):
                 'product_uom_qty': 1,
             })
             line.price_unit = shipping
+            if 'shipping_tax' in payload or payload.get('tax_lines'):
+                rate = self._single_order_rate(payload)
+                if rate is None:
+                    rate = self._percent(shipping, payload.get('shipping_tax'))
+                line.tax_ids = self._tax_for_rate(rate)
+
+    def _product_for_line(self, sku, name):
+        product = self.env['product.product'].search([
+            ('default_code', '=', sku),
+            ('company_id', 'in', [False, self.company_id.id]),
+        ], limit=1)
+        if product:
+            return product
+        template = self.env['product.template'].create({
+            'name': name or sku,
+            'default_code': sku,
+            'type': 'consu',
+            'is_storable': False,
+            'invoice_policy': 'order',
+            'list_price': 0.0,
+            'taxes_id': [(6, 0, [])],
+            'supplier_taxes_id': [(6, 0, [])],
+        })
+        return template.product_variant_id
+
+    def _tax_for_item(self, payload, item):
+        """Return the sale tax Woo charged, or None to keep the product tax."""
+        if 'total_tax' not in item and not item.get('taxes'):
+            return None
+        rate_ids = {row.get('id') for row in (item.get('taxes') or []) if isinstance(row, dict)}
+        for tax_line in payload.get('tax_lines') or []:
+            if tax_line.get('rate_id') in rate_ids and tax_line.get('rate_percent') is not None:
+                return self._tax_for_rate(float(tax_line['rate_percent']))
+        return self._tax_for_rate(self._percent(item.get('total'), item.get('total_tax')))
+
+    def _single_order_rate(self, payload):
+        percents = [
+            round(float(row['rate_percent']), 2)
+            for row in payload.get('tax_lines') or []
+            if row.get('rate_percent') is not None
+        ]
+        unique = set(percents)
+        if len(unique) == 1:
+            return unique.pop()
+        return None
+
+    def _percent(self, net, tax_amount):
+        net = float(net or 0)
+        tax_amount = float(tax_amount or 0)
+        if abs(net) < 1e-9:
+            return 0.0
+        return round(tax_amount / net * 100, 2)
+
+    def _tax_for_rate(self, percent):
+        percent = round(float(percent or 0), 2)
+        taxes = self.env['account.tax'].search([
+            ('company_id', '=', self.company_id.id),
+            ('type_tax_use', '=', 'sale'),
+            ('amount_type', '=', 'percent'),
+            ('price_include', '=', False),
+            ('active', '=', True),
+        ])
+        for tax in taxes:
+            if abs(tax.amount - percent) < 0.05:
+                return tax
+        sample = taxes[:1]
+        return self.env['account.tax'].create({
+            'name': f'VAT {percent:g}%',
+            'amount': percent,
+            'amount_type': 'percent',
+            'type_tax_use': 'sale',
+            'price_include_override': 'tax_excluded',
+            'company_id': self.company_id.id,
+            'country_id': sample.country_id.id,
+            'tax_group_id': sample.tax_group_id.id,
+        })
 
     def _shipping_product(self):
         product = self.env['product.product'].search([('default_code', '=', 'WOO-SHIP')], limit=1)
@@ -345,9 +460,9 @@ class HagenWooStore(models.Model):
         drafts = invoices.filtered(lambda move: move.state == 'draft')
         if drafts:
             drafts.action_post()
-        if not self.auto_pay or not self._is_stripe(payload):
-            if not self._is_stripe(payload):
-                order.message_post(body=_('Payment gateway is not Stripe, so the invoice was left open.'))
+        if not self.auto_pay or not self._gateway_matches(payload):
+            if not self._gateway_matches(payload):
+                order.message_post(body=_('Payment gateway does not match this shop, so the invoice was left open.'))
             return
         journal = self.payment_journal_id or self._default_stripe_journal()
         if not journal:

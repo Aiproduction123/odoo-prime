@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <function model="hagen.woo.network" name="seed_known_networks"/>
+</odoo>

@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="network_id"/>
                 <field name="base_url"/>
                 <field name="active"/>
                 <field name="last_order_sync"/>
@@ -30,7 +31,9 @@
                     </div>
                     <group>
                         <group string="WooCommerce">
-                            <field name="base_url" placeholder="https://shop.example.com"/>
+                            <field name="network_id"/>
+                            <field name="blog_id"/>
+                            <field name="base_url" placeholder="https://rattaproff.ee"/>
                             <field name="consumer_key"/>
                             <field name="consumer_secret" password="True"/>
                             <field name="warehouse_id"/>

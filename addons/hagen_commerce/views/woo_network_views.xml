@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hagen_woo_network_list" model="ir.ui.view">
+        <field name="name">hagen.woo.network.list</field>
+        <field name="model">hagen.woo.network</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="root_url"/>
+                <field name="wp_username"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hagen_woo_network_form" model="ir.ui.view">
+        <field name="name">hagen.woo.network.form</field>
+        <field name="model">hagen.woo.network</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_discover_sites" type="object" string="Discover shops" class="btn-primary"/>
+                    <button name="action_pull_orders" type="object" string="Pull paid orders"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Network">
+                            <field name="root_url"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="One login for every shop">
+                            <field name="wp_username"/>
+                            <field name="application_password" password="True"/>
+                        </group>
+                    </group>
+                    <p>
+                        WordPress → Users → Profile → Application Passwords. Use a super admin of this network.
+                        Each shop can still keep its own WooCommerce REST key, which wins over this password.
+                        Shops stay inactive until you turn them on.
+                    </p>
+                    <field name="last_discovery"/>
+                    <field name="store_ids" context="{'active_test': False}" domain="[('active', 'in', [True, False])]">
+                        <list>
+                            <field name="name"/>
+                            <field name="base_url"/>
+                            <field name="blog_id"/>
+                            <field name="active"/>
+                            <field name="stock_sync"/>
+                            <field name="auto_invoice"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hagen_woo_network" model="ir.actions.act_window">
+        <field name="name">WooCommerce network</field>
+        <field name="res_model">hagen.woo.network</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_hagen_woo_network" name="WooCommerce network" parent="sale.sale_menu_root" action="action_hagen_woo_network" sequence="44"/>
+</odoo>

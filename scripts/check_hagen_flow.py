@@ -1,4 +1,4 @@
-"""Exercise the paid Stripe order and a kit delivery, then roll back.
+"""Exercise the paid Stripe order, a Rattaproff euro invoice, and a kit delivery, then roll back.
 
 Run from `odoo shell`. This script never commits.
 """
@@ -99,6 +99,62 @@ def main():
     if not payment:
         raise SystemExit("Stripe payment was not registered")
 
+    shop = env["hagen.woo.store"].with_context(active_test=False).search([
+        ("base_url", "=", "https://rattaproff.ee"),
+    ], limit=1)
+    if not shop or shop.stock_sync or not shop.network_id:
+        raise SystemExit(f"Rattaproff shop is not ready: {shop}")
+    euro = env.ref("base.EUR")
+    converted = euro._convert(1.0, company.currency_id, company, "2026-11-07")
+    if converted < 300 or converted > 450:
+        raise SystemExit(f"EUR rate looks wrong: 1 EUR = {converted} HUF")
+    foreign = shop._import_paid_order({
+        "id": 900002,
+        "number": "900002",
+        "status": "processing",
+        "date_paid": "2026-11-07T12:00:00",
+        "payment_method": "stripe",
+        "payment_method_title": "MasterCard",
+        "currency": "EUR",
+        "billing": {
+            "first_name": "Test",
+            "last_name": "Rattaproff",
+            "email": "rattaproff-test@example.com",
+            "address_1": "Teszt 1",
+            "city": "Tallinn",
+            "postcode": "10111",
+            "country": "EE",
+        },
+        "shipping_total": "4.02",
+        "shipping_tax": "0.96",
+        "tax_lines": [{"rate_id": 1, "rate_percent": 24, "tax_total": "2.85"}],
+        "line_items": [{
+            "sku": "155883_KVED",
+            "name": "Test glue",
+            "quantity": 1,
+            "total": "7.89",
+            "total_tax": "1.89",
+            "taxes": [{"id": 1, "total": "1.89"}],
+        }],
+    })
+    if foreign.currency_id.name != "EUR":
+        raise SystemExit(f"Rattaproff currency is {foreign.currency_id.name}")
+    foreign_invoice = foreign.invoice_ids.filtered(lambda move: move.state == "posted")[:1]
+    if not foreign_invoice:
+        raise SystemExit("Rattaproff invoice was not posted")
+    if abs(foreign_invoice.amount_untaxed - 11.91) > 0.05 or abs(foreign_invoice.amount_tax - 2.85) > 0.05:
+        raise SystemExit(
+            f"Rattaproff tax math failed: untaxed={foreign_invoice.amount_untaxed} "
+            f"tax={foreign_invoice.amount_tax} total={foreign_invoice.amount_total}"
+        )
+    if foreign_invoice.payment_state != "paid" or foreign_invoice.l10n_hu_edi_state:
+        raise SystemExit(
+            f"Rattaproff payment/NAV unexpected: {foreign_invoice.payment_state} {foreign_invoice.l10n_hu_edi_state}"
+        )
+    glue = env["product.product"].search([("default_code", "=", "155883_KVED")], limit=1)
+    if not glue or glue.is_storable:
+        raise SystemExit("unknown Rattaproff SKU should be a non-stock product")
+
     start = on_hand(part)
     env["mrp.bom"].create({
         "product_tmpl_id": bike.product_tmpl_id.id,
@@ -148,6 +204,8 @@ def main():
         f"invoice={invoice.amount_untaxed}+{invoice.amount_tax}={invoice.amount_total}",
         f"payment={invoice.payment_state}",
         f"nav={company.l10n_hu_edi_server_mode}",
+        f"rattaproff={foreign_invoice.amount_total} {foreign_invoice.currency_id.name}",
+        f"eur={converted:.2f}",
         f"kit_deducted={deducted}",
     )
 
