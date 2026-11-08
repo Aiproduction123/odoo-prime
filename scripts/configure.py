@@ -262,7 +262,10 @@ def books_stage():
     })
     admin.password = password
 
+    # Fallback for jobs that have no browser. A laptop on localhost and an
+    # office computer on the network address each keep the host they opened.
     env["ir.config_parameter"].set_param("web.base.url", "http://127.0.0.1:18469")
+    env["ir.config_parameter"].set_param("web.base.url.freeze", "False")
     env["ir.config_parameter"].set_param("blurby.setup_version", "1")
     commit()
     print(

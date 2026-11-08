@@ -36,7 +36,23 @@ The first run creates `.env` (passwords), starts Postgres, builds the database, 
 
 `http://127.0.0.1:18469`
 
-Sign in as **ivari**. The password is `BLURBY_ADMIN_PASSWORD` in `.env`.
+Sign in as **ivari**. The password is `BLURBY_ADMIN_PASSWORD` in `.env`. The same login works from the computer that runs Odoo and from any other computer that can reach it, including an office PC.
+
+## Office computer and this laptop
+
+Odoo listens on port **18469** on every network address of the machine that runs Docker. On that machine, open:
+
+`http://127.0.0.1:18469`
+
+From the office computer, use the running machine’s office network address, not localhost. Find that address on the machine running Docker:
+
+```bash
+./scripts/office_url.sh
+```
+
+It prints lines such as `http://192.168.1.20:18469`. Open one of those from the other computer and sign in as **ivari**. Both computers can be signed in at the same time.
+
+If the office computer cannot connect, the machine running Docker is blocking the port. On Linux, allow it with `sudo ufw allow 18469/tcp` when ufw is active. On Windows, allow inbound TCP 18469 on private networks for Docker. The two computers have to be on the same network, or the one running Docker has to be reachable from the office.
 
 Later starts, when the database is already loaded:
 

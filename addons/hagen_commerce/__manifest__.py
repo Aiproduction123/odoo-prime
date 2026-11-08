@@ -1,6 +1,6 @@
 {
     'name': 'Hagen Group commerce',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'author': 'Hagen Group',
     'category': 'Sales',
     'summary': 'WooCommerce stores, Stripe payments, and bike kit recipes for Hagen Group Kft.',

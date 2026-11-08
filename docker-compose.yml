@@ -23,7 +23,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "18469:8069"
+      - "0.0.0.0:18469:8069"
     environment:
       HOST: db
       USER: odoo
