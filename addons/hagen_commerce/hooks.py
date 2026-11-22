@@ -12,10 +12,9 @@ STOCK_MASTER_SHOPS = (
 
 COMPANY_DETAILS = (
     "<p>Hagen Group Kft.<br/>"
-    "1053 Budapest, Kecskeméti utca 5.<br/>"
+    "1211 Budapest, Öntő utca 5.<br/>"
     "Cégjegyzékszám: 01-09-299788<br/>"
-    "Adószám: 25979923-2-41<br/>"
-    "Műhely: 1211 Budapest, Öntő utca 5.<br/>"
+    "Adószám: 25979923-2-43<br/>"
     "info@blurbybike.com</p>"
 )
 
@@ -24,13 +23,14 @@ def post_init_hook(env):
     company = env.company
     company.write({
         'name': 'Hagen Group Kft.',
-        'street': 'Kecskeméti utca 5.',
-        'zip': '1053',
+        'street': 'Öntő utca 5.',
+        'street2': False,
+        'zip': '1211',
         'city': 'Budapest',
         'country_id': env.ref('base.hu').id,
         'email': 'info@blurbybike.com',
         'company_registry': '01-09-299788',
-        'vat': '25979923-2-41',
+        'vat': '25979923-2-43',
         'company_details': COMPANY_DETAILS,
     })
     if 'l10n_hu_edi_server_mode' in company._fields:
