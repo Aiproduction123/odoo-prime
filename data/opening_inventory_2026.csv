@@ -57,8 +57,6 @@ A55,Blurby fork - aluminium painted,WH/Stock,21,,
 A56,Blurby fork - aluminium painted short,WH/Stock,4,,
 A57,Blurby fork - carbon,WH/Stock,5,,
 A58,Blurby fork - suspension,WH/Stock,0,,
-A59,Hagen Mini non electric frame,WH/Stock,0,,
-A60,Hagen Mini electric frame,WH/Stock,0,,
 A61,Hagen Flagship non electric frame,WH/Stock,1,,
 A62,Hagen Flagship electric frame,WH/Stock,6,,
 A63,Hagen XL non electric frame,WH/Stock,0,,
@@ -152,6 +150,15 @@ A150,Head tube for box,WH/Stock,13,,
 A151,Canopy holder clamp,WH/Stock,67,,
 A152,Rack,WH/Stock,15,,
 A153,Rack,WH/Stock,10,,
+A154,"Hagen rear wheel — 29"" (10-speed cassette, standard)",WH/Stock,0,,New part in 2026: count it.
+A155,"Hagen front wheel — 20"" (non-dynamo)",WH/Stock,0,,New part in 2026: count it.
+A156,Shifter — Shimano Deore 10-speed,WH/Stock,0,,New part in 2026: count it.
+A157,Hagen rear wheel — Shimano Nexus 5-speed,WH/Stock,0,,New part in 2026: count it.
+A158,Shifter — Shimano Nexus 5-speed,WH/Stock,0,,New part in 2026: count it.
+A159,Hagen rear wheel — Shimano Alfine 8-speed,WH/Stock,0,,New part in 2026: count it.
+A160,Shifter — Shimano Alfine 8-speed,WH/Stock,0,,New part in 2026: count it.
+A161,Hagen steering rod,WH/Stock,0,,New part in 2026: count it.
+A162,Blurby controller,WH/Stock,0,,New part in 2026: count it.
 M-001,Blurby Trekking,WH/Stock,0,,"Finished, ready-to-ship bikes only."
 M-002,Blurby Max,WH/Stock,0,,"Finished, ready-to-ship bikes only."
 M-003,Blurby Gravel,WH/Stock,0,,"Finished, ready-to-ship bikes only."
@@ -160,7 +167,5 @@ M-005,Hagen Flagship,WH/Stock,0,,"Finished, ready-to-ship bikes only."
 M-006,Hagen Flagship electric,WH/Stock,0,,"Finished, ready-to-ship bikes only."
 M-007,Hagen XL,WH/Stock,0,,"Finished, ready-to-ship bikes only."
 M-008,Hagen XL electric,WH/Stock,0,,"Finished, ready-to-ship bikes only."
-FS-HAGEN-FLAGSHIP,Hagen Flagship frameset,WH/Stock,,,"Kit: leave blank. Count the frame, fork (A65) and headset bearings (A96) instead."
-FS-HAGEN-FLAGSHIP-E,Hagen Flagship electric frameset,WH/Stock,,,"Kit: leave blank. Count the frame, fork (A65) and headset bearings (A96) instead."
-FS-HAGEN-XL,Hagen XL frameset,WH/Stock,,,"Kit: leave blank. Count the frame, fork (A65) and headset bearings (A96) instead."
-FS-HAGEN-XL-E,Hagen XL electric frameset,WH/Stock,,,"Kit: leave blank. Count the frame, fork (A65) and headset bearings (A96) instead."
+FS-HAGEN-FLAGSHIP,Hagen Flagship frameset,WH/Stock,,,"Kit: leave blank. Count its parts instead: frame, fork A65, bearings A96/A131, kickstand, steering rod A161."
+FS-HAGEN-XL,Hagen XL frameset,WH/Stock,,,"Kit: leave blank. Count its parts instead: frame, fork A65, bearings A96/A131, kickstand, steering rod A161."

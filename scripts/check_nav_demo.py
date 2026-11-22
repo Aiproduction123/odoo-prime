@@ -102,7 +102,7 @@ for kind, currency, price in (("b2b", huf, 1_500_000), ("b2c", eur, 2390)):
 
 env.cr.rollback()
 
-# The guard: NAV cannot leave Demo without the confirmed company extract.
+# The guard: NAV cannot leave Demo until all four technical-user credentials are entered.
 from odoo.exceptions import UserError, ValidationError
 
 blocked = []
@@ -112,14 +112,15 @@ try:
         env.company.flush_recordset()
 except ValidationError:
     blocked.append("settings")
-wizard = env["hagen.nav.golive"].create({"tax_number": "25979923-2-41", "mode": "test"})
+wizard = env["hagen.nav.golive"].create({"mode": "test"})
+if wizard.tax_number != "25979923-2-43" or not wizard.extract_confirmed:
+    raise SystemExit(f"NAV wizard defaults are {wizard.tax_number} / {wizard.extract_confirmed}")
 try:
     with env.cr.savepoint():
         wizard.action_switch()
 except UserError:
-    blocked.append("unconfirmed")
+    blocked.append("missing credentials")
 wizard.write({
-    "extract_confirmed": True,
     "l10n_hu_edi_username": "fake-user", "l10n_hu_edi_password": "fake",
     "l10n_hu_edi_signature_key": "fake-signature-key", "l10n_hu_edi_replacement_key": "fake-replacement-key",
 })
@@ -130,7 +131,7 @@ except UserError:
     blocked.append("wrong credentials")
 env.cr.rollback()
 env.invalidate_all()
-if blocked != ["settings", "unconfirmed", "wrong credentials"] or env.company.l10n_hu_edi_server_mode != "demo":
+if blocked != ["settings", "missing credentials", "wrong credentials"] or env.company.l10n_hu_edi_server_mode != "demo":
     raise SystemExit(f"NAV guard failed: blocked={blocked} mode={env.company.l10n_hu_edi_server_mode}")
 results.append("guard blocks: " + ", ".join(blocked))
 

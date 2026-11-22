@@ -54,14 +54,48 @@ class ProductProduct(models.Model):
         unclaimed = product.qty_available - product.outgoing_qty
         return max(0.0, min(product.free_qty, unclaimed))
 
-    def _hagen_buildable(self, bom, warehouse, depth=0):
-        limits = []
+    def _hagen_needs(self, bom):
+        """Component → quantity needed for one unit of the BoM's product."""
+        needs = {}
         for line in bom.bom_line_ids:
             component = line.product_id
-            if not component.is_storable and not self._hagen_find_bom(component, 'phantom'):
-                continue
             need = line.product_uom_id._compute_quantity(line.product_qty, component.uom_id) / (bom.product_qty or 1.0)
-            if need <= 0:
+            if need > 0:
+                needs[component] = needs.get(component, 0.0) + need
+        return needs
+
+    def _hagen_apply_spec(self, needs, spec):
+        """Swap, drop and add parts the way the webshop options change the build."""
+        Product = self.env['product.product']
+        by_code = {product.default_code: product for product in needs}
+
+        def find(code):
+            return by_code.get(code) or Product.search([('default_code', '=', code)], limit=1)
+
+        needs = dict(needs)
+        for old, new in spec.get('replace', []):
+            product = by_code.get(old)
+            if product in needs:
+                qty = needs.pop(product)
+                target = find(new)
+                if target:
+                    needs[target] = needs.get(target, 0.0) + qty
+                    by_code[new] = target
+        for code in spec.get('remove', []):
+            product = by_code.get(code)
+            if product in needs:
+                needs.pop(product)
+        for code, qty, _label in spec.get('add', []):
+            target = find(code)
+            if target:
+                needs[target] = needs.get(target, 0.0) + qty
+                by_code[code] = target
+        return needs
+
+    def _hagen_buildable(self, needs, warehouse, depth=0):
+        limits = []
+        for component, need in needs.items():
+            if not component.is_storable and not self._hagen_find_bom(component, 'phantom'):
                 continue
             limits.append(component._hagen_sellable_qty(warehouse, depth + 1) / need)
         return min(limits) if limits else 0.0
@@ -70,15 +104,19 @@ class ProductProduct(models.Model):
         boms = self.env['mrp.bom'].sudo()._bom_find(product, company_id=self.env.company.id, bom_type=bom_type)
         return boms.get(product) or self.env['mrp.bom']
 
-    def _hagen_sellable_qty(self, warehouse, depth=0):
+    def _hagen_sellable_qty(self, warehouse, depth=0, spec=None):
+        """Sellable units. With a webshop build spec, only what can be built in that configuration."""
         self.ensure_one()
         if depth > 5:
             return 0
         bom = self._hagen_find_bom(self)
-        if bom and bom.type == 'phantom':
-            qty = self._hagen_buildable(bom, warehouse, depth)
+        changed = bool(spec and (spec.get('replace') or spec.get('remove') or spec.get('add')))
+        if bom and changed:
+            qty = self._hagen_buildable(self._hagen_apply_spec(self._hagen_needs(bom), spec), warehouse, depth)
+        elif bom and bom.type == 'phantom':
+            qty = self._hagen_buildable(self._hagen_needs(bom), warehouse, depth)
         else:
             qty = self._hagen_free_units(warehouse)
             if bom:
-                qty += self._hagen_buildable(bom, warehouse, depth)
+                qty += self._hagen_buildable(self._hagen_needs(bom), warehouse, depth)
         return int(math.floor(max(qty, 0.0) + 1e-6))

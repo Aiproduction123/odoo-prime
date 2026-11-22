@@ -1,9 +1,10 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+# Confirmed company extract: 25979923-2-43, seat 1211 Budapest, Öntő utca 5.
+TAX_NUMBER = '25979923-2-43'
 SEATS = {
-    '25979923-2-41': {'street': 'Kecskeméti utca 5.', 'zip': '1053', 'city': 'Budapest'},
-    '25979923-2-43': {'street': 'Öntő utca 5.', 'zip': '1211', 'city': 'Budapest'},
+    TAX_NUMBER: {'street': 'Öntő utca 5.', 'zip': '1211', 'city': 'Budapest'},
 }
 CREDENTIALS = (
     ('l10n_hu_edi_username', 'technikai felhasználónév'),
@@ -22,14 +23,22 @@ class ResCompany(models.Model):
         copy=False,
     )
 
-    @api.constrains('l10n_hu_edi_server_mode')
+    @api.constrains('l10n_hu_edi_server_mode', *(field for field, _label in CREDENTIALS))
     def _check_hagen_nav_extract(self):
-        for company in self:
-            if company.l10n_hu_edi_server_mode in ('test', 'production') and not company.sudo().hagen_nav_extract_confirmed:
+        for company in self.sudo():
+            if company.l10n_hu_edi_server_mode not in ('test', 'production'):
+                continue
+            if not company.hagen_nav_extract_confirmed:
                 raise ValidationError(_(
                     'NAV stays in Demo until the company extract (cégkivonat) is confirmed. '
                     'Use Invoicing → Configuration → NAV go-live.'
                 ))
+            missing = [label for field, label in CREDENTIALS if not company[field]]
+            if missing:
+                raise ValidationError(_(
+                    'NAV stays in Demo until all four technical-user credentials are entered. Missing: %s. '
+                    'Use Invoicing → Configuration → NAV go-live.'
+                ) % ', '.join(missing))
 
 
 class HagenNavGolive(models.TransientModel):
@@ -40,10 +49,12 @@ class HagenNavGolive(models.TransientModel):
     current_vat = fields.Char(related='company_id.vat', string='Tax number now')
     current_mode = fields.Selection(related='company_id.l10n_hu_edi_server_mode', string='NAV mode now')
     tax_number = fields.Selection([
-        ('25979923-2-41', '25979923-2-41 (seat 1053 Budapest, Kecskeméti utca 5.)'),
-        ('25979923-2-43', '25979923-2-43 (seat 1211 Budapest, Öntő utca 5.)'),
-    ], string='Tax number on the company extract', required=True)
-    extract_confirmed = fields.Boolean(string='I checked the latest company extract (cégkivonat): it shows this tax number and seat')
+        (TAX_NUMBER, '25979923-2-43 (seat 1211 Budapest, Öntő utca 5.)'),
+    ], string='Tax number on the company extract', required=True, default=TAX_NUMBER)
+    extract_confirmed = fields.Boolean(
+        string='Company extract (cégkivonat) confirmed: 25979923-2-43, 1211 Budapest, Öntő utca 5.',
+        default=True,
+    )
     mode = fields.Selection([
         ('test', 'Test (NAV test system, needs a test-portal user)'),
         ('production', 'Production (live invoices are reported to NAV)'),

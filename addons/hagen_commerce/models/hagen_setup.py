@@ -9,10 +9,29 @@ _logger = logging.getLogger(__name__)
 # reference, which has to equal the WooCommerce SKU.
 FRAMESETS = (
     ('FS-HAGEN-FLAGSHIP', 'Hagen Flagship frameset'),
-    ('FS-HAGEN-FLAGSHIP-E', 'Hagen Flagship electric frameset'),
     ('FS-HAGEN-XL', 'Hagen XL frameset'),
-    ('FS-HAGEN-XL-E', 'Hagen XL electric frameset'),
 )
+FRAMESET_DESCRIPTION = (
+    'Non-electric kit: frame, Hagen fork A65, 4 headset bearings A96, 2 bearings A131, kickstand and '
+    'steering rod A161. Website extras are added as separate order lines. Sale price is not set.'
+)
+# Hagen Mini is discontinued and framesets are sold non-electric only.
+RETIRED = ('A59', 'A60', 'FS-HAGEN-MINI', 'FS-HAGEN-MINI-E', 'FS-HAGEN-FLAGSHIP-E', 'FS-HAGEN-XL-E')
+
+NEW_PARTS = (
+    ('A154', 'Hagen rear wheel — 29" (10-speed cassette, standard)', 'Hagen parts'),
+    ('A155', 'Hagen front wheel — 20" (non-dynamo)', 'Hagen parts'),
+    ('A156', 'Shifter — Shimano Deore 10-speed', 'Bike parts'),
+    ('A157', 'Hagen rear wheel — Shimano Nexus 5-speed', 'Hagen parts'),
+    ('A158', 'Shifter — Shimano Nexus 5-speed', 'Bike parts'),
+    ('A159', 'Hagen rear wheel — Shimano Alfine 8-speed', 'Hagen parts'),
+    ('A160', 'Shifter — Shimano Alfine 8-speed', 'Bike parts'),
+    ('A161', 'Hagen steering rod', 'Hagen parts'),
+    ('A162', 'Blurby controller', 'Blurby electronics'),
+)
+
+COMPANY_VAT = '25979923-2-43'
+COMPANY_SEAT = {'street': 'Öntő utca 5.', 'street2': False, 'zip': '1211', 'city': 'Budapest'}
 
 STOCK_MASTER_SHOPS = (
     ('Blurby store', 'https://blurbybike.com'),
@@ -39,8 +58,12 @@ class HagenSetup(models.AbstractModel):
 
     @api.model
     def run(self):
+        self._company_seat()
         self._store_addresses()
+        self._new_parts()
         self._framesets()
+        self._retire()
+        self._labour_hours()
         self._receipts()
         employee = self._employee_user()
         self._employee_menus(employee)
@@ -53,6 +76,79 @@ class HagenSetup(models.AbstractModel):
             store = Store.search([('name', '=', name), ('company_id', '=', self.env.company.id)], limit=1)
             if store and not store.base_url:
                 store.base_url = url
+
+    def _company_seat(self):
+        company = self.env.company.sudo()
+        if not company.partner_id.country_id or company.partner_id.country_id.code != 'HU':
+            return
+        values = {key: value for key, value in COMPANY_SEAT.items() if company[key] != value}
+        if company.vat != COMPANY_VAT:
+            values['vat'] = COMPANY_VAT
+        if 'hagen_nav_extract_confirmed' in company._fields and not company.hagen_nav_extract_confirmed:
+            values['hagen_nav_extract_confirmed'] = True
+        if values:
+            company.write(values)
+        if 'company_details' in company._fields and company.company_details and 'Kecskeméti' in company.company_details:
+            company.company_details = (
+                '<p>Hagen Group Kft.<br/>1211 Budapest, Öntő utca 5.<br/>Cégjegyzékszám: %s<br/>'
+                'Adószám: %s<br/>info@blurbybike.com</p>'
+            ) % (company.company_registry or '01-09-299788', COMPANY_VAT)
+        workshop = self.env['res.partner'].search([
+            ('name', '=', 'Hagen Group workshop'), ('parent_id', '=', company.partner_id.id),
+        ], limit=1)
+        if workshop and workshop.comment and 'Kecskeméti' in str(workshop.comment):
+            workshop.comment = 'Service workshop at the registered seat.'
+
+    def _new_parts(self):
+        sale_tax, purchase_tax = self._goods_taxes()
+        Template = self.env['product.template'].with_context(active_test=False)
+        for code, name, category_name in NEW_PARTS:
+            if Template.search([('default_code', '=', code)], limit=1):
+                continue
+            category = self.env['product.category'].search([('name', '=', category_name)], limit=1)
+            if not category:
+                category = self.env['product.category'].create({'name': category_name})
+            vals = {
+                'name': name,
+                'default_code': code,
+                'categ_id': category.id,
+                'type': 'consu',
+                'is_storable': True,
+                'sale_ok': True,
+                'purchase_ok': True,
+                'invoice_policy': 'order',
+                'list_price': 0.0,
+                'description': 'New part in 2026. Sale price is not set. Put the real price on the product before invoicing.',
+            }
+            if sale_tax:
+                vals['taxes_id'] = [(6, 0, sale_tax.ids)]
+            if purchase_tax:
+                vals['supplier_taxes_id'] = [(6, 0, purchase_tax.ids)]
+            Template.create(vals)
+
+    def _retire(self):
+        templates = self.env['product.template'].with_context(active_test=False).search([('default_code', 'in', RETIRED)])
+        if not templates:
+            return
+        boms = self.env['mrp.bom'].with_context(active_test=False).search([('product_tmpl_id', 'in', templates.ids)])
+        drafts = boms.filtered(lambda bom: not bom.active and bom.code == 'Draft for sign-off')
+        (boms - drafts).filtered('active').write({'active': False})
+        drafts.unlink()
+        quants = self.env['stock.quant'].sudo().search([
+            ('product_id', 'in', templates.with_context(active_test=False).product_variant_ids.ids),
+            ('quantity', '=', 0), ('reserved_quantity', '=', 0),
+        ])
+        quants.unlink()
+        templates.filtered('active').write({'active': False})
+
+    def _labour_hours(self):
+        hours = self.env.ref('uom.product_uom_hour', raise_if_not_found=False)
+        labour = self.env['product.template'].search([('default_code', '=', 'SVC-LABOUR')], limit=1)
+        if not hours or not labour or labour.uom_id == hours:
+            return
+        lines = self.env['mrp.bom.line'].with_context(active_test=False).search([('product_tmpl_id', '=', labour.id)])
+        labour.uom_id = hours
+        lines.write({'product_uom_id': hours.id})
 
     def _goods_taxes(self):
         chart = self.env['account.chart.template'].with_company(self.env.company)
@@ -76,8 +172,7 @@ class HagenSetup(models.AbstractModel):
                 'sale_ok': True,
                 'purchase_ok': False,
                 'invoice_policy': 'order',
-                'description': 'Kit: frame, Hagen fork and headset bearings. Sellable quantity comes '
-                               'from the same parts as the complete bike. Sale price is not set.',
+                'description': FRAMESET_DESCRIPTION,
             }
             if sale_tax:
                 vals['taxes_id'] = [(6, 0, sale_tax.ids)]
@@ -85,7 +180,7 @@ class HagenSetup(models.AbstractModel):
                 vals['supplier_taxes_id'] = [(6, 0, purchase_tax.ids)]
             template = Template.search([('default_code', '=', code)], limit=1)
             if template:
-                template.write({key: value for key, value in vals.items() if key not in ('name', 'description')})
+                template.write({key: value for key, value in vals.items() if key != 'name'})
             else:
                 Template.create({**vals, 'list_price': 0.0})
 

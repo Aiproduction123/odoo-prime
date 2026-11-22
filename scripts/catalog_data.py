@@ -65,8 +65,6 @@ PARTS = [
     ("A56", "Blurby fork - aluminium painted short", "frame", "", "", 4, ""),
     ("A57", "Blurby fork - carbon", "frame", "", "", 5, "db"),
     ("A58", "Blurby fork - suspension", "frame", "", "", 0, "db"),
-    ("A59", "Hagen Mini non electric frame", "frame", "Majer Factory Kft.", "", 0, "db"),
-    ("A60", "Hagen Mini electric frame", "frame", "Majer Factory Kft.", "", 0, "db"),
     ("A61", "Hagen Flagship non electric frame", "frame", "Majer Factory Kft.", "", 1, "db"),
     ("A62", "Hagen Flagship electric frame", "frame", "Majer Factory Kft.", "", 6, "db"),
     ("A63", "Hagen XL non electric frame", "frame", "Majer Factory Kft.", "", 0, "db"),
@@ -160,6 +158,15 @@ PARTS = [
     ("A151", "Canopy holder clamp", "Tricycle parts", "", "", 67, ""),
     ("A152", "Rack", "Vanmoof parts", "Majer Factory Kft.", "A5 (women) rack", 15, ""),
     ("A153", "Rack", "Vanmoof parts", "Majer Factory Kft.", "A5 (women) rack", 10, ""),
+    ("A154", 'Hagen rear wheel — 29" (10-speed cassette, standard)', "Hagen parts", "", "10-speed cassette, standard", 0, "db"),
+    ("A155", 'Hagen front wheel — 20" (non-dynamo)', "Hagen parts", "", "non-dynamo", 0, "db"),
+    ("A156", "Shifter — Shimano Deore 10-speed", "Bike parts", "Shimano", "Deore 10-speed", 0, "db"),
+    ("A157", "Hagen rear wheel — Shimano Nexus 5-speed", "Hagen parts", "Shimano", "Nexus 5-speed hub", 0, "db"),
+    ("A158", "Shifter — Shimano Nexus 5-speed", "Bike parts", "Shimano", "Nexus 5-speed", 0, "db"),
+    ("A159", "Hagen rear wheel — Shimano Alfine 8-speed", "Hagen parts", "Shimano", "Alfine 8-speed hub", 0, "db"),
+    ("A160", "Shifter — Shimano Alfine 8-speed", "Bike parts", "Shimano", "Alfine 8-speed", 0, "db"),
+    ("A161", "Hagen steering rod", "Hagen parts", "", "", 0, "db"),
+    ("A162", "Blurby controller", "Blurby electronics", "", "", 0, "db"),
 ]
 
 BIKES = [
@@ -173,6 +180,7 @@ BIKES = [
     ("M-008", "Hagen XL electric"),
 ]
 
-assert len(PARTS) == 153, len(PARTS)
-assert len({row[0] for row in PARTS}) == 153
+# A59/A60 (Hagen Mini frames) are discontinued; A154–A162 were added in 2026.
+assert len(PARTS) == 160, len(PARTS)
+assert len({row[0] for row in PARTS}) == 160
 assert len(BIKES) == 8

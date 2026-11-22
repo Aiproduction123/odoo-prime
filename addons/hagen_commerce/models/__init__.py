@@ -5,6 +5,8 @@ from . import ir_http
 from . import product
 from . import purchase
 from . import sale_order
+from . import mrp_production
+from . import webshop_options
 from . import woo_network
 from . import woo_store
 from . import stock

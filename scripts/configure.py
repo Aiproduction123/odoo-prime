@@ -12,7 +12,7 @@ sys.path.insert(0, "/opt/blurby")
 import catalog_data  # noqa: E402
 
 COMPANY_NAME = "Hagen Group Kft."
-VAT = "25979923-2-41"
+VAT = "25979923-2-43"
 REGISTRY = "01-09-299788"
 SAMPLE_REF = "BLURBY-SAMPLE-DRAFT"
 
@@ -29,9 +29,9 @@ def company_stage():
         company.currency_id = forint
     company.write({
         "name": COMPANY_NAME,
-        "street": "Kecskeméti utca 5.",
+        "street": "Öntő utca 5.",
         "street2": False,
-        "zip": "1053",
+        "zip": "1211",
         "city": "Budapest",
         "country_id": hungary.id,
         "email": "info@blurbybike.com",
@@ -134,10 +134,9 @@ def books_stage():
 
     company.company_details = (
         "<p>Hagen Group Kft.<br/>"
-        "1053 Budapest, Kecskeméti utca 5.<br/>"
+        "1211 Budapest, Öntő utca 5.<br/>"
         "Cégjegyzékszám: 01-09-299788<br/>"
-        "Adószám: 25979923-2-41<br/>"
-        "Műhely: 1211 Budapest, Öntő utca 5.<br/>"
+        "Adószám: 25979923-2-43<br/>"
         "info@blurbybike.com</p>"
     )
     if "l10n_hu_edi_server_mode" in company._fields:
@@ -167,7 +166,7 @@ def books_stage():
             "city": "Budapest",
             "country_id": env.ref("base.hu").id,
             "email": "info@blurbybike.com",
-            "comment": "Service workshop. The registered seat used on invoices is Kecskeméti utca 5.",
+            "comment": "Service workshop at the registered seat.",
         })
 
     goods_sale = chart_tax(company, "F27")

@@ -17,7 +17,9 @@ result = wizard.action_import()
 env.cr.commit()
 print("RECIPES", result["params"]["message"])
 Bom = env["mrp.bom"].with_context(active_test=False)
-for bom in Bom.search([("code", "in", ("Confirmed recipe", "Draft for sign-off"))], order="code, product_tmpl_id"):
+for bom in Bom.search([
+    ("code", "in", ("Confirmed recipe", "Draft for sign-off")), ("product_tmpl_id.active", "=", True),
+], order="code, product_tmpl_id"):
     print(
         "BOM",
         bom.product_tmpl_id.default_code,

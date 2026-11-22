@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 
@@ -6,24 +7,12 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from . import webshop_options as options
+
 _logger = logging.getLogger(__name__)
 
 OPENING_INVENTORY_REF = 'Opening Inventory 2026'
 OPENING_DONE_PARAM = 'hagen_commerce.opening_inventory_applied'
-
-# hagenbikes.com sells bikes through a configurator: one product per model,
-# with the drive type ("Non-electric", "90 Nm Brose Mid-Motor", "Frame set")
-# in the line options instead of a SKU.
-HAGEN_MODELS = (('flagship', 'FLAGSHIP'), ('hagen xl', 'XL'), ('mini', 'MINI'))
-HAGEN_BIKES = {
-    ('FLAGSHIP', False): 'M-005',
-    ('FLAGSHIP', True): 'M-006',
-    ('XL', False): 'M-007',
-    ('XL', True): 'M-008',
-}
-FRAMESET_WORDS = ('frame set', 'frameset', 'frame-set', 'rahmenset', 'rahmen-set', 'rahmen set')
-NON_ELECTRIC_WORDS = ('non-electric', 'non electric', 'nicht-elektrisch', 'nicht elektrisch', 'ohne motor')
-ELECTRIC_WORDS = ('brose', 'mid-motor', 'mittelmotor', 'electric', 'elektrisch', ' nm ')
 
 PAID_STATUSES = {'processing', 'completed', 'paid'}
 SKIP_STATUSES = {'pending', 'failed', 'cancelled', 'refunded', 'on-hold', 'checkout-draft'}
@@ -185,63 +174,82 @@ class HagenWooStore(models.Model):
                 ) % {'store': store.name, 'ref': OPENING_INVENTORY_REF})
 
     def _push_stock(self):
+        """Tell the shop what it may sell: simple products by SKU, every enabled variation of a
+        variable product by SKU or by its options (size, material, drivetrain…)."""
         self.ensure_one()
         if not self._opening_inventory_applied():
             raise UserError(_('Stock push is blocked until "%s" is applied.') % OPENING_INVENTORY_REF)
-        parents = []
+        simple = []
         variations = {}
+        cache = {}
         page = 1
         while page <= 30:
             products = self._woo_request('GET', 'products', params={'per_page': 100, 'page': page, 'status': 'publish'}) or []
             for product in products:
-                sku = (product.get('sku') or '').strip()
-                if sku:
-                    parents.append((sku, product['id']))
                 if product.get('type') == 'variable':
-                    self._collect_variations(product['id'], variations)
+                    rows = self._variation_updates(product, cache)
+                    if rows:
+                        variations[product['id']] = rows
+                    continue
+                target = self._product_for_sku(product.get('sku'))
+                if target:
+                    simple.append(self._stock_update(product['id'], target, None, cache))
             if len(products) < 100:
                 break
             page += 1
-        self._push_batch('products/batch', parents)
+        self._post_updates('products/batch', simple)
         for parent_id, rows in variations.items():
-            self._push_batch(f'products/{parent_id}/variations/batch', rows)
-        self.last_sync_message = _('Pushed stock for %s WooCommerce SKUs.') % (len(parents) + sum(len(rows) for rows in variations.values()))
+            self._post_updates(f'products/{parent_id}/variations/batch', rows)
+        count = len(simple) + sum(len(rows) for rows in variations.values())
+        self.last_sync_message = _('Pushed stock for %(count)s products and variations (%(variations)s variations).') % {
+            'count': count, 'variations': count - len(simple),
+        }
+        return count
 
-    def _collect_variations(self, parent_id, variations):
+    def _variation_updates(self, parent, cache):
+        updates = []
         page = 1
         while page <= 10:
-            rows = self._woo_request('GET', f'products/{parent_id}/variations', params={'per_page': 100, 'page': page}) or []
+            rows = self._woo_request('GET', f"products/{parent['id']}/variations", params={'per_page': 100, 'page': page}) or []
             for row in rows:
-                sku = (row.get('sku') or '').strip()
-                if sku:
-                    variations.setdefault(parent_id, []).append((sku, row['id']))
+                if (row.get('status') or 'publish') != 'publish':
+                    continue
+                target = self._product_for_sku(row.get('sku'))
+                build = None
+                if not target:
+                    build = options.resolve_variation(parent.get('name') or '', row)
+                    target = self._known_product(build['code'])
+                if target:
+                    updates.append(self._stock_update(row['id'], target, build, cache))
             if len(rows) < 100:
                 break
             page += 1
+        return updates
 
-    def _push_batch(self, path, sku_rows):
-        updates = []
-        for sku, woo_id in sku_rows:
-            product = self.env['product.product'].search([
-                ('default_code', '=', sku),
-                ('company_id', 'in', [False, self.company_id.id]),
-            ], limit=1)
-            if not product or not product.is_storable:
-                continue
-            updates.append({
-                'id': woo_id,
-                'manage_stock': True,
-                'stock_quantity': self._qty_for_store(product),
-            })
+    def _product_for_sku(self, sku):
+        sku = (sku or '').strip()
+        if not sku:
+            return self.env['product.product']
+        product = self._known_product(sku) or self._known_product(options.SKU_ALIASES.get(sku))
+        return product if product.is_storable else self.env['product.product']
+
+    def _stock_update(self, woo_id, product, build, cache):
+        spec = build if options.has_changes(build) else None
+        key = (product.id, json.dumps(spec, sort_keys=True))
+        if key not in cache:
+            cache[key] = self._qty_for_store(product, spec)
+        return {'id': woo_id, 'manage_stock': True, 'stock_quantity': cache[key]}
+
+    def _post_updates(self, path, updates):
         for start in range(0, len(updates), 50):
             self._woo_request('POST', path, payload={'update': updates[start:start + 50]})
 
-    def _qty_for_store(self, product):
+    def _qty_for_store(self, product, spec=None):
         self.ensure_one()
         warehouse = self.warehouse_id or self.env['stock.warehouse'].search([
             ('company_id', '=', self.company_id.id),
         ], limit=1)
-        return product.with_company(self.company_id)._hagen_sellable_qty(warehouse)
+        return product.with_company(self.company_id)._hagen_sellable_qty(warehouse, spec=spec)
 
     def _import_paid_order(self, payload):
         self.ensure_one()
@@ -349,27 +357,55 @@ class HagenWooStore(models.Model):
 
     def _add_lines(self, order, payload):
         OrderLine = self.env['sale.order.line']
+        note = payload.get('customer_note') or ''
         for item in payload.get('line_items') or []:
             qty = float(item.get('quantity') or 0)
             if qty <= 0:
                 continue
             sku = (item.get('sku') or '').strip()
+            build = options.resolve_line(item, note)
             product = self._known_product(sku) if sku else self.env['product.product']
             if not product:
-                product = self._known_product(self._configured_code(item))
+                product = self._known_product(build['code'])
             if not product:
                 sku = sku or f"WOO-{item.get('product_id') or item.get('id') or 'line'}"
                 product = self._product_for_line(sku, item.get('name'))
+            if build['code'] and build['code'] != product.default_code:
+                build = options.resolve('', [])
+            kit = bool(self._kit_bom(product))
+            extras = build['add'] if (kit or not build['code']) else []
+            # Kits are delivered, not built: their extras ship as their own lines instead.
+            spec = {'replace': build['replace'], 'remove': build['remove'], 'add': [] if extras else build['add']}
+            text = self._line_text(product, item, build)
             total = float(item.get('total') or 0)
-            line = OrderLine.create({
+            vals = {
                 'order_id': order.id,
                 'product_id': product.id,
                 'product_uom_qty': qty,
-            })
+            }
+            if options.has_changes(spec) or build['notes'] or build['warnings']:
+                vals['hagen_build_spec'] = spec if options.has_changes(spec) else False
+                vals['hagen_build_notes'] = text
+            line = OrderLine.create(vals)
+            if text:
+                line.name = text
             line.price_unit = total / qty
             tax = self._tax_for_item(payload, item)
             if tax is not None:
                 line.tax_ids = tax
+            for code, extra_qty, label in extras:
+                extra = self._known_product(code)
+                if not extra:
+                    continue
+                extra_line = OrderLine.create({
+                    'order_id': order.id,
+                    'product_id': extra.id,
+                    'product_uom_qty': extra_qty * qty,
+                })
+                extra_line.name = f'{extra.display_name}\n{label}, with {product.display_name}: included in the price above.'
+                extra_line.price_unit = 0.0
+                if tax is not None:
+                    extra_line.tax_ids = tax
         shipping = float(payload.get('shipping_total') or 0)
         if shipping:
             product = self._shipping_product()
@@ -395,26 +431,22 @@ class HagenWooStore(models.Model):
 
     @api.model
     def _configured_code(self, item):
-        """Map a hagenbikes.com configurator line (no SKU) to the bike or frameset it describes."""
-        parts = [str(item.get('name') or '')]
-        for meta in item.get('meta_data') or []:
-            if isinstance(meta, dict):
-                parts += [str(meta.get(key) or '') for key in ('display_key', 'display_value', 'key', 'value')]
-        text = ' '.join(parts).lower().replace('\u00a0', ' ')
-        name = str(item.get('name') or '').lower()
-        model = next((code for word, code in HAGEN_MODELS if word in name), None)
-        if not model:
-            return None
-        frameset = any(word in text for word in FRAMESET_WORDS)
-        non_electric = any(word in text for word in NON_ELECTRIC_WORDS)
-        electric = not non_electric and any(word in text for word in ELECTRIC_WORDS)
-        if frameset:
-            return f'FS-HAGEN-{model}' + ('-E' if electric else '')
-        if non_electric:
-            return HAGEN_BIKES.get((model, False))
-        if electric:
-            return HAGEN_BIKES.get((model, True))
-        return None
+        """Odoo product code a webshop line resolves to (bike, frameset or part), or None."""
+        return options.resolve_line(item)['code']
+
+    def _kit_bom(self, product):
+        if not product:
+            return self.env['mrp.bom']
+        return product._hagen_find_bom(product, 'phantom')
+
+    @api.model
+    def _line_text(self, product, item, build):
+        if not build['notes'] and not build['warnings']:
+            return ''
+        lines = [product.display_name if product.default_code else (item.get('name') or product.display_name)]
+        lines += build['notes']
+        lines += [f'CHECK: {warning}' for warning in build['warnings']]
+        return '\n'.join(lines)
 
     def _product_for_line(self, sku, name):
         product = self.env['product.product'].search([

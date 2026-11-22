@@ -6,8 +6,8 @@
         <field name="arch" type="xml">
             <form string="NAV go-live">
                 <div class="alert alert-warning" role="alert">
-                    NAV stays in Demo until this form is saved with a confirmed company extract.
-                    If NAV rejects the credentials, nothing changes.
+                    NAV stays in Demo until all four technical-user credentials are entered here.
+                    If NAV rejects them, nothing changes.
                 </div>
                 <group>
                     <group string="Now">
@@ -16,8 +16,8 @@
                         <field name="current_mode"/>
                     </group>
                     <group string="Company extract (cégkivonat)">
-                        <field name="tax_number" widget="radio"/>
-                        <field name="extract_confirmed"/>
+                        <field name="tax_number" readonly="1"/>
+                        <field name="extract_confirmed" readonly="1"/>
                     </group>
                 </group>
                 <group string="NAV Online Számla technical user (Online Számla → Felhasználók → Technikai felhasználó)">

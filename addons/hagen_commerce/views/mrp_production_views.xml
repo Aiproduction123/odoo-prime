@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_production_form_hagen" model="ir.ui.view">
+        <field name="name">mrp.production.form.hagen</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="before">
+                <div class="alert alert-info" role="status" invisible="not hagen_build_notes">
+                    <strong>Webshop build options</strong>
+                    <field name="hagen_build_notes" nolabel="1" readonly="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <template id="report_mrporder_hagen" inherit_id="mrp.report_mrporder">
+        <xpath expr="//span[@t-field='o.product_id']/../.." position="after">
+            <div class="row mb32" t-if="o.hagen_build_notes">
+                <div class="col-12">
+                    <strong>Webshop build options:</strong><br/>
+                    <span t-field="o.hagen_build_notes" style="white-space: pre-line;"/>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

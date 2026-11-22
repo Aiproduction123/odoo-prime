@@ -1,10 +1,10 @@
 {
     'name': 'Hagen Group commerce',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.5.0',
     'author': 'Hagen Group',
     'category': 'Sales',
     'summary': 'WooCommerce stores, Stripe payments, bike recipes, framesets and the workshop employee role for Hagen Group Kft.',
-    'depends': ['mrp', 'purchase', 'sale_management', 'stock', 'account', 'l10n_hu', 'l10n_hu_edi'],
+    'depends': ['mrp', 'sale_mrp', 'purchase', 'sale_management', 'stock', 'account', 'l10n_hu', 'l10n_hu_edi'],
     'data': [
         'security/hagen_groups.xml',
         'security/ir.model.access.csv',
@@ -16,6 +16,7 @@
         'views/bom_import_views.xml',
         'views/product_views.xml',
         'views/nav_golive_views.xml',
+        'views/mrp_production_views.xml',
         'data/setup.xml',
     ],
     'post_init_hook': 'post_init_hook',
