@@ -79,7 +79,7 @@ Validating updates on-hand stock at once. The webshop numbers follow on the next
 All 22 webshops are switched off. Odoo refuses to switch a stock-master shop (Blurby, Hagen) on, and refuses to push stock, until the opening count has been applied. This stops Odoo from pushing zeros or the old spreadsheet numbers to the live shops.
 
 1. Print or share `data/opening_inventory_2026.csv`. It lists every part, bike and frameset at WH/Stock with the 2025-12-31 sheet quantity for reference. Fill `counted_qty` on the shelf. Leave a row blank if it was not counted, so it is never set to zero. Leave the four FS-HAGEN rows blank, because framesets are counted as parts.
-2. Either type the counts in Inventory → Operations → **Physical Inventory** (every part already has a line), or copy the file into `data/` and run:
+2. Either type the counts in Inventory → Operations → **Physical Inventory** (every part already has a line; remove the default “My Counts” filter to see them), or copy the file into `data/` and run:
 
    ```bash
    sudo docker compose exec -T odoo odoo shell -d blurby --no-http < scripts/load_opening_counts.py

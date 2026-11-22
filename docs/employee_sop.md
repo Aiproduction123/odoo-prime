@@ -17,14 +17,14 @@ If less arrived than ordered, Odoo keeps the rest open as a new receipt (backord
 **B. Parts arrive with no order (direct receipt)**
 
 1. Inventory → Overview → **Receipts** [Beszállítások] → **New** [Új].
-2. **Receive From** [Partner]: the supplier. **Add a line** [Új sor]: part code (e.g. A65) and quantity. Repeat for each part.
+2. **Receive From** [Partner]: the supplier. **Add a Product** [Új termék hozzáadása]: type the part code (e.g. A65) and pick it, then the quantity. Repeat for each part.
 3. Click **Validate** [Jóváhagyás].
 
 Stock updates at once. The webshops show the new numbers within 15 minutes. Put the parts on their shelf before the next job.
 
 ## 2. Building a bike
 
-1. Manufacturing → **Manufacturing Orders** [Gyártási rendelések]. Webshop orders for complete bikes create these by themselves.
+1. Open **Manufacturing** [Gyártás]: it starts on **Manufacturing Orders** [Gyártási rendelések]. Webshop orders for complete bikes create these by themselves.
 2. Open the order. Check **Components** [Komponensek]: green means the parts are in stock. Red means a part is missing, so tell the office before you start.
 3. Build the bike. If you used a different quantity of a part, correct it on its line.
 4. Click **Produce All** (if shown), then **Validate** [Jóváhagyás] until the status says **Done** [Kész].
@@ -42,5 +42,5 @@ Done removes the parts from stock and adds 1 finished bike. Never mark an order 
 
 - Never type a quantity you did not count. When unsure, ask the office first.
 - Broken part: Inventory → Operations → **Scrap** [Selejt], not a delete.
-- Shelf count (Opening Inventory 2026): Inventory → Operations → **Physical Inventory** [Fizikai leltár]. Type the **Counted Quantity** [Számolt mennyiség] only. The office clicks **Apply All** [Összes alkalmazása].
+- Shelf count (Opening Inventory 2026): Inventory → Operations → **Physical Inventory** [Fizikai leltár]. Remove the “My Counts” filter in the search bar to see every part, then type the **Counted Quantity** [Számolt mennyiség] only. The office clicks **Apply All** [Összes alkalmazása].
 - Something looks wrong? Stop, do not click Validate, and call Ivari.
