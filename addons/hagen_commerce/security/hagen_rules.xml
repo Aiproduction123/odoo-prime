@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_supplierinfo_hidden_for_employee" model="ir.rule">
+        <field name="name">Workshop employees do not see supplier prices</field>
+        <field name="model_id" ref="product.model_product_supplierinfo"/>
+        <field name="groups" eval="[(4, ref('group_employee'))]"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+    </record>
+</odoo>

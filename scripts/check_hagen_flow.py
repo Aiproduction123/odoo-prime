@@ -155,20 +155,64 @@ def main():
     if not glue or glue.is_storable:
         raise SystemExit("unknown Rattaproff SKU should be a non-stock product")
 
-    start = on_hand(part)
-    env["mrp.bom"].create({
-        "product_tmpl_id": bike.product_tmpl_id.id,
-        "product_id": bike.id,
-        "product_qty": 1.0,
-        "type": "phantom",
-        "company_id": company.id,
-        "bom_line_ids": [(0, 0, {"product_id": part.id, "product_qty": 1.0})],
+    other = store._import_paid_order({
+        **PAYLOAD,
+        "id": 900003,
+        "number": "900003",
+        "payment_method": "bacs",
+        "payment_method_title": "Direct bank transfer",
+        "billing": {**PAYLOAD["billing"], "email": "bank-test@example.com"},
     })
+    other_invoice = other.invoice_ids.filtered(lambda move: move.state == "posted")[:1]
+    if not other_invoice or other_invoice.payment_state != "not_paid" or abs(other_invoice.amount_tax - 2700) > 0.02:
+        raise SystemExit(f"bank transfer order should be invoiced and open: {other_invoice.payment_state}")
+
+    # hagenbikes.com configurator lines carry the drive type in their options, not a SKU.
+    def line(name, *options):
+        return {"name": name, "sku": "", "meta_data": [
+            {"key": f"pa_{i}", "display_key": label, "display_value": value} for i, (label, value) in enumerate(options)
+        ]}
+    cases = [
+        (line("Hagen XL", ("01 Colors", "Black"), ("02 Type", "90 Nm Brose Mid-Motor (+ 3100.00 €)")), "M-008"),
+        (line("Hagen FLAGSHIP", ("01 Colors", "Yellow"), ("02 Type", "Non-electric")), "M-005"),
+        (line("Hagen FLAGSHIP", ("02 Farben", "Weiß"), ("01 Typ", "Nicht-elektrisch")), "M-005"),
+        (line("Hagen FLAGSHIP", ("01 Colors", "Black"), ("02 Type", "90 Nm Brose Mid-Motor")), "M-006"),
+        (line("Hagen XL", ("02 Type", "Non-electric (+ 0.00 €)")), "M-007"),
+        (line("Hagen FLAGSHIP", ("01 Colors", "Yellow"), ("02 Type", "Frame set"), ("04 Handlebar", "Flat")), "FS-HAGEN-FLAGSHIP"),
+        (line("Hagen XL", ("02 Type", "Frame set electric")), "FS-HAGEN-XL-E"),
+        (line("Hagen MINI", ("02 Type", "Frame set")), "FS-HAGEN-MINI"),
+        (line("Canopy"), None),
+    ]
+    for item, expected in cases:
+        got = store._configured_code(item)
+        if got != expected:
+            raise SystemExit(f"configurator mapping {item['name']} {item['meta_data']} -> {got}, expected {expected}")
+    hagen_store = stores.filtered(lambda row: row.name == "Hagen store")[:1]
+    configured = hagen_store._import_paid_order({
+        **PAYLOAD,
+        "id": 900004,
+        "number": "6447",
+        "currency": "EUR",
+        "billing": {**PAYLOAD["billing"], "email": "config-test@example.com", "country": "BE"},
+        "line_items": [{**cases[0][0], "quantity": 1, "total": "4390.00", "product_id": 172}],
+    })
+    if configured.order_line[:1].product_id.default_code != "M-008":
+        raise SystemExit(f"configurator order mapped to {configured.order_line.product_id.mapped('default_code')}")
+
+    # Kit delivery: the Hagen XL electric frameset ships as frame, fork and bearings.
+    frameset = env["product.product"].search([("default_code", "=", "FS-HAGEN-XL-E")], limit=1)
+    fork = env["product.product"].search([("default_code", "=", "A65")], limit=1)
+    bearing = env["product.product"].search([("default_code", "=", "A96")], limit=1)
+    part = env["product.product"].search([("default_code", "=", "A64")], limit=1)
+    stock_location = env["stock.warehouse"].search([("company_id", "=", company.id)], limit=1).lot_stock_id
+    env["stock.quant"]._update_available_quantity(fork, stock_location, 1)
+    env["stock.quant"]._update_available_quantity(bearing, stock_location, 4)
+    start = on_hand(part)
     partner = env["res.partner"].create({"name": "Kit deduction test", "country_id": env.ref("base.hu").id})
     sale = env["sale.order"].create({"partner_id": partner.id, "company_id": company.id})
     line = env["sale.order.line"].create({
         "order_id": sale.id,
-        "product_id": bike.id,
+        "product_id": frameset.id,
         "product_uom_qty": 1,
     })
     line.price_unit = 1.0
@@ -194,8 +238,8 @@ def main():
     if picking.state != "done":
         raise SystemExit(f"delivery state is {picking.state}")
     deducted = start - on_hand(part)
-    if abs(deducted - 1) > 1e-6:
-        raise SystemExit(f"A34 deduction was {deducted}, expected 1")
+    if abs(deducted - 1) > 1e-6 or on_hand(fork) or on_hand(bearing):
+        raise SystemExit(f"A64 deduction was {deducted}, fork {on_hand(fork)}, bearings {on_hand(bearing)}")
 
     print(
         "HAGEN FLOW OK",
@@ -203,6 +247,8 @@ def main():
         journal.code,
         f"invoice={invoice.amount_untaxed}+{invoice.amount_tax}={invoice.amount_total}",
         f"payment={invoice.payment_state}",
+        f"bank_transfer={other_invoice.payment_state}",
+        f"configurator={configured.order_line[:1].product_id.default_code}",
         f"nav={company.l10n_hu_edi_server_mode}",
         f"rattaproff={foreign_invoice.amount_total} {foreign_invoice.currency_id.name}",
         f"eur={converted:.2f}",

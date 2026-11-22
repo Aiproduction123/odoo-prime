@@ -28,5 +28,5 @@
         <field name="target">new</field>
     </record>
 
-    <menuitem id="menu_hagen_bom_import" name="Import bike recipes" parent="mrp.menu_mrp_root" action="action_hagen_bom_import" sequence="30"/>
+    <menuitem id="menu_hagen_bom_import" name="Import bike recipes" parent="mrp.menu_mrp_root" action="action_hagen_bom_import" sequence="30" groups="mrp.group_mrp_manager"/>
 </odoo>

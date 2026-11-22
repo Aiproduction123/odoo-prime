@@ -29,11 +29,13 @@ services:
       USER: odoo
       PASSWORD: ${POSTGRES_PASSWORD}
       BLURBY_ADMIN_PASSWORD: ${BLURBY_ADMIN_PASSWORD:-}
+      HAGEN_EMPLOYEE_PASSWORD: ${HAGEN_EMPLOYEE_PASSWORD:-}
     volumes:
       - blurby-data:/var/lib/odoo
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
       - ./addons:/mnt/extra-addons
       - ./scripts:/opt/blurby:ro
+      - ./data:/opt/hagen-data:ro
     restart: unless-stopped
 
 volumes:

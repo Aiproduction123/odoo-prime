@@ -67,5 +67,5 @@
         <field name="context">{'active_test': False}</field>
     </record>
 
-    <menuitem id="menu_hagen_woo_store" name="WooCommerce stores" parent="sale.sale_menu_root" action="action_hagen_woo_store" sequence="45"/>
+    <menuitem id="menu_hagen_woo_store" name="WooCommerce stores" parent="sale.sale_menu_root" action="action_hagen_woo_store" sequence="45" groups="sales_team.group_sale_manager"/>
 </odoo>

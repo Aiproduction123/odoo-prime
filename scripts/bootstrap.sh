@@ -18,8 +18,8 @@ from pathlib import Path
 def password():
     return secrets.token_urlsafe(18)
 Path(".env").write_text(
-    "POSTGRES_PASSWORD=%s\nODOO_MASTER_PASSWORD=%s\nBLURBY_ADMIN_PASSWORD=%s\n" % (
-        password(), password(), password()
+    "POSTGRES_PASSWORD=%s\nODOO_MASTER_PASSWORD=%s\nBLURBY_ADMIN_PASSWORD=%s\nHAGEN_EMPLOYEE_PASSWORD=%s\n" % (
+        password(), password(), password(), password()
     ),
     encoding="utf-8",
 )
@@ -27,6 +27,9 @@ os_chmod = Path(".env")
 os_chmod.chmod(0o600)
 print("Wrote .env with generated passwords")
 PY
+fi
+if ! grep -q '^HAGEN_EMPLOYEE_PASSWORD=' .env; then
+  python3 -c 'import secrets; print("HAGEN_EMPLOYEE_PASSWORD=" + secrets.token_urlsafe(18))' >> .env
 fi
 chmod 600 .env
 
@@ -84,9 +87,13 @@ fi
 if db_exists; then
   commerce="$("${COMPOSE[@]}" exec -T db psql -U odoo -d blurby -tAc "SELECT state FROM ir_module_module WHERE name='hagen_commerce'" 2>/dev/null | tr -d '[:space:]' || true)"
   if [[ "$commerce" != "installed" ]]; then
-    echo "Installing manufacturing and the WooCommerce connector"
+    echo "Installing manufacturing, purchase, and the WooCommerce connector"
     "${COMPOSE[@]}" stop odoo >/dev/null 2>&1 || true
-    "${COMPOSE[@]}" run --rm --no-deps odoo odoo -d blurby -i hagen_commerce --without-demo=all --stop-after-init
+    "${COMPOSE[@]}" run --rm --no-deps odoo odoo -d blurby -i purchase,hagen_commerce --without-demo=all --stop-after-init
+  elif [[ "${1:-}" == "--upgrade" ]]; then
+    echo "Upgrading the Hagen Group module"
+    "${COMPOSE[@]}" stop odoo >/dev/null 2>&1 || true
+    "${COMPOSE[@]}" run --rm --no-deps odoo odoo -d blurby -i purchase -u hagen_commerce --without-demo=all --stop-after-init
   fi
 fi
 

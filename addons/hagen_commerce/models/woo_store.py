@@ -1,13 +1,29 @@
 import logging
-import math
 import secrets
 
 import requests
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
+
+OPENING_INVENTORY_REF = 'Opening Inventory 2026'
+OPENING_DONE_PARAM = 'hagen_commerce.opening_inventory_applied'
+
+# hagenbikes.com sells bikes through a configurator: one product per model,
+# with the drive type ("Non-electric", "90 Nm Brose Mid-Motor", "Frame set")
+# in the line options instead of a SKU.
+HAGEN_MODELS = (('flagship', 'FLAGSHIP'), ('hagen xl', 'XL'), ('mini', 'MINI'))
+HAGEN_BIKES = {
+    ('FLAGSHIP', False): 'M-005',
+    ('FLAGSHIP', True): 'M-006',
+    ('XL', False): 'M-007',
+    ('XL', True): 'M-008',
+}
+FRAMESET_WORDS = ('frame set', 'frameset', 'frame-set', 'rahmenset', 'rahmen-set', 'rahmen set')
+NON_ELECTRIC_WORDS = ('non-electric', 'non electric', 'nicht-elektrisch', 'nicht elektrisch', 'ohne motor')
+ELECTRIC_WORDS = ('brose', 'mid-motor', 'mittelmotor', 'electric', 'elektrisch', ' nm ')
 
 PAID_STATUSES = {'processing', 'completed', 'paid'}
 SKIP_STATUSES = {'pending', 'failed', 'cancelled', 'refunded', 'on-hold', 'checkout-draft'}
@@ -153,8 +169,25 @@ class HagenWooStore(models.Model):
                 _logger.exception('WooCommerce sync failed for %s', store.name)
                 store.last_sync_message = str(error)[:500]
 
+    @api.model
+    def _opening_inventory_applied(self):
+        return bool(self.env['ir.config_parameter'].sudo().get_param(OPENING_DONE_PARAM))
+
+    @api.constrains('active', 'stock_sync')
+    def _check_opening_inventory(self):
+        if self._opening_inventory_applied():
+            return
+        for store in self:
+            if store.active and store.stock_sync:
+                raise ValidationError(_(
+                    '%(store)s pushes stock to the shop. Apply the "%(ref)s" count under '
+                    'Inventory → Physical Inventory first, so the shop never receives empty or old counts.'
+                ) % {'store': store.name, 'ref': OPENING_INVENTORY_REF})
+
     def _push_stock(self):
         self.ensure_one()
+        if not self._opening_inventory_applied():
+            raise UserError(_('Stock push is blocked until "%s" is applied.') % OPENING_INVENTORY_REF)
         parents = []
         variations = {}
         page = 1
@@ -208,23 +241,7 @@ class HagenWooStore(models.Model):
         warehouse = self.warehouse_id or self.env['stock.warehouse'].search([
             ('company_id', '=', self.company_id.id),
         ], limit=1)
-        product = product.with_company(self.company_id).with_context(warehouse_id=warehouse.id)
-        boms = self.env['mrp.bom']._bom_find(product, company_id=self.company_id.id, bom_type='phantom')
-        bom = boms.get(product)
-        if not bom:
-            qty = product.free_qty
-        else:
-            limits = []
-            for line in bom.bom_line_ids:
-                need = line.product_qty / (bom.product_qty or 1.0)
-                if need <= 0:
-                    continue
-                available = line.product_id.with_company(self.company_id).with_context(warehouse_id=warehouse.id).free_qty
-                limits.append(available / need)
-            qty = min(limits) if limits else 0.0
-        if qty < 0:
-            qty = 0.0
-        return int(math.floor(qty + 1e-6))
+        return product.with_company(self.company_id)._hagen_sellable_qty(warehouse)
 
     def _import_paid_order(self, payload):
         self.ensure_one()
@@ -337,9 +354,12 @@ class HagenWooStore(models.Model):
             if qty <= 0:
                 continue
             sku = (item.get('sku') or '').strip()
-            if not sku:
-                sku = f"WOO-{item.get('product_id') or item.get('id') or 'line'}"
-            product = self._product_for_line(sku, item.get('name'))
+            product = self._known_product(sku) if sku else self.env['product.product']
+            if not product:
+                product = self._known_product(self._configured_code(item))
+            if not product:
+                sku = sku or f"WOO-{item.get('product_id') or item.get('id') or 'line'}"
+                product = self._product_for_line(sku, item.get('name'))
             total = float(item.get('total') or 0)
             line = OrderLine.create({
                 'order_id': order.id,
@@ -364,6 +384,37 @@ class HagenWooStore(models.Model):
                 if rate is None:
                     rate = self._percent(shipping, payload.get('shipping_tax'))
                 line.tax_ids = self._tax_for_rate(rate)
+
+    def _known_product(self, code):
+        if not code:
+            return self.env['product.product']
+        return self.env['product.product'].search([
+            ('default_code', '=', code),
+            ('company_id', 'in', [False, self.company_id.id]),
+        ], limit=1)
+
+    @api.model
+    def _configured_code(self, item):
+        """Map a hagenbikes.com configurator line (no SKU) to the bike or frameset it describes."""
+        parts = [str(item.get('name') or '')]
+        for meta in item.get('meta_data') or []:
+            if isinstance(meta, dict):
+                parts += [str(meta.get(key) or '') for key in ('display_key', 'display_value', 'key', 'value')]
+        text = ' '.join(parts).lower().replace('\u00a0', ' ')
+        name = str(item.get('name') or '').lower()
+        model = next((code for word, code in HAGEN_MODELS if word in name), None)
+        if not model:
+            return None
+        frameset = any(word in text for word in FRAMESET_WORDS)
+        non_electric = any(word in text for word in NON_ELECTRIC_WORDS)
+        electric = not non_electric and any(word in text for word in ELECTRIC_WORDS)
+        if frameset:
+            return f'FS-HAGEN-{model}' + ('-E' if electric else '')
+        if non_electric:
+            return HAGEN_BIKES.get((model, False))
+        if electric:
+            return HAGEN_BIKES.get((model, True))
+        return None
 
     def _product_for_line(self, sku, name):
         product = self.env['product.product'].search([

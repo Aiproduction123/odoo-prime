@@ -18,7 +18,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_discover_sites" type="object" string="Discover shops" class="btn-primary"/>
+                    <button name="action_test_connection" type="object" string="Test connection" class="btn-primary"/>
+                    <button name="action_discover_sites" type="object" string="Discover shops"/>
                     <button name="action_pull_orders" type="object" string="Pull paid orders"/>
                 </header>
                 <sheet>
@@ -62,5 +63,5 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_hagen_woo_network" name="WooCommerce network" parent="sale.sale_menu_root" action="action_hagen_woo_network" sequence="44"/>
+    <menuitem id="menu_hagen_woo_network" name="WooCommerce network" parent="sale.sale_menu_root" action="action_hagen_woo_network" sequence="44" groups="sales_team.group_sale_manager"/>
 </odoo>

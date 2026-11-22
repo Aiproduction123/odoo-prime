@@ -1,29 +1,173 @@
-bike_code,part_code,qty_per_bike,bom_type,status,note
-M-001,A50,1,kit,needs_confirmation,Inventory sheet calls this a wheel. A50 in the catalog is Blurby frame raw L. Do not confirm until the part code is checked.
-M-001,A34,1,kit,needs_confirmation,Sheet part name is blank. A34 in the catalog is a grip lock ring.
-M-004,A13,1,kit,needs_confirmation,Sheet line is a 22T cassette belt sprocket. Confirm this is the right part for Blurby 1st gen.
-M-004,A21,1,kit,needs_confirmation,Sheet line is a 2nd gen belt. On-hand count is 0. Confirm the code before loading.
-M-005,A62,1,kit,needs_confirmation,Sheet says Flagship frame. A62 is the electric frame. The non-electric Flagship frame is A61.
-M-005,A70,1,kit,needs_confirmation,Sheet line is a Shimano ZEE 36T chainring. Confirm quantity and that this model uses it.
-M-005,A127,1,kit,needs_confirmation,Sheet line is an SKS mudguard plastic.
-M-005,A111,1,kit,needs_confirmation,Sheet line is the left Flagship side panel, black.
-M-005,A112,1,kit,needs_confirmation,Sheet line is the right Flagship side panel, gray.
-M-005,A117,1,kit,needs_confirmation,Sheet line is a 28.7 seatpost clamp.
-M-005,A121,1,kit,needs_confirmation,Sheet line is a Shimano RT-MT800 rotor.
-M-005,A129,1,kit,needs_confirmation,Sheet line is a kickstand XL.
-M-006,A63,1,kit,needs_confirmation,Sheet links A63. A63 is the XL non-electric frame. The electric Flagship frame is A62.
-M-006,A79,1,kit,needs_confirmation,Sheet calls this a Brose display, then later a Brose midmotor. The midmotor in the catalog is A78.
-M-006,A81,1,kit,needs_confirmation,Sheet line is a battery holder.
-M-006,A127,1,kit,needs_confirmation,Sheet line is an SKS mudguard plastic.
-M-007,A64,1,kit,needs_confirmation,Sheet links A64. A64 is the XL electric frame. M-007 is the XL non-electric bike, whose frame is A63.
-M-007,A127,1,kit,needs_confirmation,Sheet line is an SKS mudguard plastic.
-M-008,A65,1,kit,needs_confirmation,Sheet links A65. A65 is the Hagen fork. The XL electric frame is A64.
-M-008,A79,1,kit,needs_confirmation,Sheet line is a Brose display. Confirm it is not the midmotor A78.
-M-008,A81,1,kit,needs_confirmation,Sheet line is a battery holder.
-HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: Flagship electric frame, quantity 1. No catalog code on the sheet. Fill part_code before confirming.
-HAGEN-SOM,,4,kit,needs_confirmation,SoM Hagen row: headset bearing 34mm, quantity 4. No catalog code on the sheet.
-HAGEN-SOM,,,kit,needs_confirmation,SoM Hagen row: rear hub gear and cassette. Quantity is blank and there is no catalog code.
-HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: front wheel 20 inch non-dynamo, quantity 1. No catalog code.
-HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: stiff fork, quantity 1. No catalog code.
-HAGEN-SOM,,1,kit,needs_confirmation,SoM Hagen row: chainring, note says many options. No catalog code.
-HAGEN-SOM,,,kit,needs_confirmation,SoM Hagen row: chainring spider. Quantity is blank and there is no catalog code.
+bike_code,part_code,qty_per_bike,bom_type,status,sheet_code,note
+M-001,A49,1,manufacture,confirmed,A50,Painted Blurby frame. Every part code in the sheet's recipe block is one row too high; A50 is a raw L frame and the label 'Wheel d=90mm' belongs to A10 (board wheel).
+M-001,A33,1,manufacture,confirmed,A34,Grip (sheet name was blank; A34 is the grip lock ring). Sheet says 1; a bike has two grips - change to 2 if the sheet counts single grips.
+M-001,A55,1,manufacture,inferred,,Blurby fork aluminium painted.
+M-001,A29,1,manufacture,inferred,,Handlebar for Blurby - Normal.
+M-001,A31,1,manufacture,inferred,,Stem for Blurby.
+M-001,A34,2,manufacture,inferred,,Grip lock ring - one per grip.
+M-001,A35,2,manufacture,inferred,,Handlebar end plug.
+M-001,A42,1,manufacture,inferred,,Saddle - Blurby.
+M-001,A45,1,manufacture,inferred,,Kickstand adjustable.
+M-001,A67,1,manufacture,inferred,,Blurby dropout right.
+M-001,A68,1,manufacture,inferred,,Blurby dropout left with brake holder.
+M-001,A18,1,manufacture,inferred,,3rd gen drive belt.
+M-001,A16,1,manufacture,inferred,,3rd gen 22T cassette belt sprocket.
+M-001,A22,1,manufacture,inferred,,Cranks and belt drive ring set.
+M-001,A43,1,manufacture,inferred,,Hub 36 spoke quick release.
+M-001,A36,2,manufacture,inferred,,Brake disc rotor 160mm - front and rear.
+M-001,A38,1,manufacture,inferred,,Blurby mudguard front.
+M-001,A40,1,manufacture,inferred,,Blurby mudguard rear M - depends on frame size.
+M-001,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike. Fill in the hours and set to confirmed.
+M-002,A49,1,manufacture,inferred,,Blurby Max draft. Painted Blurby frame.
+M-002,A55,1,manufacture,inferred,,Blurby fork aluminium painted.
+M-002,A29,1,manufacture,inferred,,Handlebar for Blurby - Normal.
+M-002,A31,1,manufacture,inferred,,Stem for Blurby.
+M-002,A33,2,manufacture,inferred,,Grip.
+M-002,A34,2,manufacture,inferred,,Grip lock ring.
+M-002,A35,2,manufacture,inferred,,Handlebar end plug.
+M-002,A42,1,manufacture,inferred,,Saddle - Blurby.
+M-002,A45,1,manufacture,inferred,,Kickstand adjustable.
+M-002,A67,1,manufacture,inferred,,Blurby dropout right.
+M-002,A68,1,manufacture,inferred,,Blurby dropout left with brake holder.
+M-002,A18,1,manufacture,inferred,,3rd gen drive belt.
+M-002,A16,1,manufacture,inferred,,3rd gen 22T cassette belt sprocket.
+M-002,A22,1,manufacture,inferred,,Cranks and belt drive ring set.
+M-002,A43,1,manufacture,inferred,,Hub 36 spoke quick release.
+M-002,A36,2,manufacture,inferred,,Brake disc rotor 160mm.
+M-002,A38,1,manufacture,inferred,,Blurby mudguard front.
+M-002,A41,1,manufacture,inferred,,Blurby mudguard rear L. What makes a Max different is not in the workbook.
+M-002,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+M-003,A49,1,manufacture,inferred,,Blurby Gravel draft. Painted Blurby frame.
+M-003,A57,1,manufacture,inferred,,Blurby fork carbon.
+M-003,A30,1,manufacture,inferred,,Handlebar for Blurby - Carbon (only 1 in stock).
+M-003,A31,1,manufacture,inferred,,Stem for Blurby.
+M-003,A33,2,manufacture,inferred,,Grip.
+M-003,A34,2,manufacture,inferred,,Grip lock ring.
+M-003,A35,2,manufacture,inferred,,Handlebar end plug.
+M-003,A42,1,manufacture,inferred,,Saddle - Blurby.
+M-003,A67,1,manufacture,inferred,,Blurby dropout right.
+M-003,A68,1,manufacture,inferred,,Blurby dropout left with brake holder.
+M-003,A18,1,manufacture,inferred,,3rd gen drive belt.
+M-003,A16,1,manufacture,inferred,,3rd gen 22T cassette belt sprocket.
+M-003,A22,1,manufacture,inferred,,Cranks and belt drive ring set.
+M-003,A43,1,manufacture,inferred,,Hub 36 spoke quick release.
+M-003,A36,2,manufacture,inferred,,Brake disc rotor 160mm. No mudguards or kickstand on the gravel draft.
+M-003,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+M-004,A12,1,manufacture,confirmed,A13,1st gen 28T freewheel belt sprocket. A13 is a 2nd gen cassette sprocket.
+M-004,A20,1,manufacture,confirmed,A21,1st gen drive belt (Balless HTD 1328 8M). A21 is the 2nd gen belt with 0 on hand.
+M-004,A53,1,manufacture,inferred,,Blurby frame (old) - 1 men and 1 women on the shelf.
+M-004,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+M-005,A61,1,manufacture,confirmed,A62,Flagship non-electric frame. A62 is the electric frame.
+M-005,A65,1,manufacture,confirmed,,Hagen fork - shared with the frameset (SoM Hagen: stiff fork).
+M-005,A96,4,manufacture,confirmed,,Headset bearing 34mm - SoM Hagen says 4 per bike. Shared with the frameset.
+M-005,A70,1,manufacture,confirmed,A70,Shimano ZEE 36T chainring. Kept as written: the one-row shift would give A69 (Brose motor spider) which a non-electric bike does not use.
+M-005,A126,1,manufacture,confirmed,A127,SKS mudguard set front and rear.
+M-005,A110,1,manufacture,confirmed,A111,Side panel right Flagship black. The sheet mixed a black left and a gray right panel; shifted codes give a matching black pair.
+M-005,A111,1,manufacture,confirmed,A112,Side panel left Flagship black.
+M-005,A116,1,manufacture,confirmed,A117,Seatpost clamp for Hagen 30mm. A117 (28.7mm) is noted as hard to use on Hagen.
+M-005,A120,1,manufacture,confirmed,A121,Shimano SM-RT54 180mm center-lock rotor (17 on the shelf). A121 is the RT-MT800 boxed spare. Sheet says 1; change to 2 if both wheels have a disc.
+M-005,A128,1,manufacture,confirmed,A129,Kickstand Flagship. A129 is the XL kickstand.
+M-005,A127,1,manufacture,inferred,,SKS mudguard plastic parts set - mounts for A126.
+M-005,A76,1,manufacture,inferred,,ISIS cranks for Hagen (pair).
+M-005,A102,1,manufacture,inferred,,Floor plate Flagship black.
+M-005,A114,1,manufacture,inferred,,Seat panel black.
+M-005,A98,1,manufacture,inferred,,Handlebar for Hagen - Riser.
+M-005,A97,1,manufacture,inferred,,Stem for Hagen (0 on the shelf).
+M-005,A123,1,manufacture,inferred,,Center-lock lockring for A120.
+M-005,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+M-006,A62,1,manufacture,confirmed,A63,Flagship electric frame. A63 is the XL non-electric frame. Matches SoM Hagen.
+M-006,A65,1,manufacture,confirmed,,Hagen fork stiff - SoM Hagen.
+M-006,A96,4,manufacture,confirmed,,Headset bearing 34mm x 4 - SoM Hagen.
+M-006,A78,1,manufacture,confirmed,A79,Brose midmotor (the sheet's own label). A79 is the Brose display. 0 motors on the shelf.
+M-006,A80,1,manufacture,confirmed,A81,Hagen battery 630Wh (the sheet's own label). A81 is the battery holder.
+M-006,A126,1,manufacture,confirmed,A127,SKS mudguard set.
+M-006,A69,1,manufacture,confirmed,,Chainring spider for Hagen - SoM Hagen (qty blank on SoM; one per bike).
+M-006,A70,1,manufacture,inferred,,Chainring - SoM says many options. 36T ZEE matches the Flagship.
+M-006,A75,1,manufacture,inferred,,Brose spider lockring.
+M-006,A77,1,manufacture,inferred,,Samcx cranks for Brose (pair).
+M-006,A79,1,manufacture,inferred,,Brose display G59389-100. A92 is the same part number - see the duplicate note.
+M-006,A81,1,manufacture,inferred,,Battery holder.
+M-006,A84,1,manufacture,inferred,,Battery cable.
+M-006,A93,1,manufacture,inferred,,Display cable non-GPS.
+M-006,A83,1,manufacture,inferred,,Speed sensor.
+M-006,A127,1,manufacture,inferred,,SKS mudguard plastic parts set.
+M-006,A110,1,manufacture,inferred,,Side panel right Flagship black.
+M-006,A111,1,manufacture,inferred,,Side panel left Flagship black.
+M-006,A102,1,manufacture,inferred,,Floor plate Flagship black.
+M-006,A114,1,manufacture,inferred,,Seat panel black.
+M-006,A116,1,manufacture,inferred,,Seatpost clamp for Hagen.
+M-006,A120,1,manufacture,inferred,,Center-lock rotor 180mm.
+M-006,A123,1,manufacture,inferred,,Center-lock lockring.
+M-006,A128,1,manufacture,inferred,,Kickstand Flagship.
+M-006,A98,1,manufacture,inferred,,Handlebar for Hagen - Riser.
+M-006,A97,1,manufacture,inferred,,Stem for Hagen.
+M-006,,1,manufacture,needs_new_part,,SoM Hagen: rear wheel 28 inch with hub gear or cassette. No part code exists. Proposed new code A154.
+M-006,,1,manufacture,needs_new_part,,SoM Hagen: front wheel 20 inch non-dynamo. No part code exists. Proposed new code A155.
+M-006,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+M-007,A63,1,manufacture,confirmed,A64,XL non-electric frame. A64 is the XL electric frame.
+M-007,A65,1,manufacture,confirmed,,Hagen fork - shared with the frameset.
+M-007,A96,4,manufacture,confirmed,,Headset bearing 34mm x 4 - shared with the frameset.
+M-007,A126,1,manufacture,confirmed,A127,SKS mudguard set.
+M-007,A127,1,manufacture,inferred,,SKS mudguard plastic parts set.
+M-007,A70,1,manufacture,inferred,,Chainring 36T ZEE.
+M-007,A76,1,manufacture,inferred,,ISIS cranks for Hagen (pair).
+M-007,A104,1,manufacture,inferred,,Floor plate XL black.
+M-007,A114,1,manufacture,inferred,,Seat panel black.
+M-007,A116,1,manufacture,inferred,,Seatpost clamp for Hagen.
+M-007,A120,1,manufacture,inferred,,Center-lock rotor 180mm.
+M-007,A123,1,manufacture,inferred,,Center-lock lockring.
+M-007,A129,1,manufacture,inferred,,Kickstand XL.
+M-007,A98,1,manufacture,inferred,,Handlebar for Hagen - Riser.
+M-007,A97,1,manufacture,inferred,,Stem for Hagen.
+M-007,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+M-008,A64,1,manufacture,confirmed,A65,XL electric frame. A65 is the Hagen fork.
+M-008,A65,1,manufacture,confirmed,,Hagen fork - shared with the frameset.
+M-008,A96,4,manufacture,confirmed,,Headset bearing 34mm x 4 - shared with the frameset.
+M-008,A78,1,manufacture,confirmed,A79,Brose midmotor. A79 is the display. 0 motors on the shelf.
+M-008,A80,1,manufacture,confirmed,A81,Hagen battery. A81 is the battery holder.
+M-008,A69,1,manufacture,inferred,,Chainring spider for Hagen (as SoM Hagen for the Flagship electric).
+M-008,A70,1,manufacture,inferred,,Chainring 36T ZEE.
+M-008,A75,1,manufacture,inferred,,Brose spider lockring.
+M-008,A77,1,manufacture,inferred,,Samcx cranks for Brose (pair).
+M-008,A79,1,manufacture,inferred,,Brose display.
+M-008,A81,1,manufacture,inferred,,Battery holder.
+M-008,A84,1,manufacture,inferred,,Battery cable.
+M-008,A93,1,manufacture,inferred,,Display cable non-GPS.
+M-008,A83,1,manufacture,inferred,,Speed sensor.
+M-008,A126,1,manufacture,inferred,,SKS mudguard set (not on the sheet for M-008).
+M-008,A127,1,manufacture,inferred,,SKS mudguard plastic parts set.
+M-008,A104,1,manufacture,inferred,,Floor plate XL black.
+M-008,A114,1,manufacture,inferred,,Seat panel black.
+M-008,A116,1,manufacture,inferred,,Seatpost clamp for Hagen.
+M-008,A120,1,manufacture,inferred,,Center-lock rotor 180mm.
+M-008,A123,1,manufacture,inferred,,Center-lock lockring.
+M-008,A129,1,manufacture,inferred,,Kickstand XL.
+M-008,A98,1,manufacture,inferred,,Handlebar for Hagen - Riser.
+M-008,A97,1,manufacture,inferred,,Stem for Hagen.
+M-008,SVC-LABOUR,,manufacture,needs_confirmation,,Workshop hours per bike.
+FS-HAGEN-FLAGSHIP,A61,1,kit,confirmed,,Flagship non-electric frame - same part as M-005.
+FS-HAGEN-FLAGSHIP,A65,1,kit,confirmed,,Hagen fork - same part as M-005.
+FS-HAGEN-FLAGSHIP,A96,4,kit,confirmed,,Headset bearings - same parts and quantity as M-005.
+FS-HAGEN-FLAGSHIP,A116,1,kit,inferred,,Optional: seatpost clamp for Hagen.
+FS-HAGEN-FLAGSHIP,A131,2,kit,inferred,,Optional: 608-2RS steering link bearings - quantity is a guess.
+FS-HAGEN-FLAGSHIP-E,A62,1,kit,confirmed,,Flagship electric frame - same part as M-006.
+FS-HAGEN-FLAGSHIP-E,A65,1,kit,confirmed,,Hagen fork - same part as M-006.
+FS-HAGEN-FLAGSHIP-E,A96,4,kit,confirmed,,Headset bearings - same as M-006.
+FS-HAGEN-FLAGSHIP-E,A116,1,kit,inferred,,Optional: seatpost clamp for Hagen.
+FS-HAGEN-FLAGSHIP-E,A131,2,kit,inferred,,Optional: steering link bearings - quantity is a guess.
+FS-HAGEN-XL,A63,1,kit,confirmed,,XL non-electric frame - same part as M-007.
+FS-HAGEN-XL,A65,1,kit,confirmed,,Hagen fork - same part as M-007.
+FS-HAGEN-XL,A96,4,kit,confirmed,,Headset bearings - same as M-007.
+FS-HAGEN-XL,A116,1,kit,inferred,,Optional: seatpost clamp for Hagen.
+FS-HAGEN-XL,A131,2,kit,inferred,,Optional: steering link bearings - quantity is a guess.
+FS-HAGEN-XL-E,A64,1,kit,confirmed,,XL electric frame - same part as M-008.
+FS-HAGEN-XL-E,A65,1,kit,confirmed,,Hagen fork - same part as M-008.
+FS-HAGEN-XL-E,A96,4,kit,confirmed,,Headset bearings - same as M-008.
+FS-HAGEN-XL-E,A116,1,kit,inferred,,Optional: seatpost clamp for Hagen.
+FS-HAGEN-XL-E,A131,2,kit,inferred,,Optional: steering link bearings - quantity is a guess.
+FS-HAGEN-MINI,A59,1,kit,needs_confirmation,,Only if the Mini frameset is still sold. Mini frame A59 has 0 on the shelf and there is no Mini bike code. The product is not created yet.
+FS-HAGEN-MINI,A65,1,kit,needs_confirmation,,Hagen fork.
+FS-HAGEN-MINI,A96,4,kit,needs_confirmation,,Headset bearings.
+FS-HAGEN-MINI-E,A60,1,kit,needs_confirmation,,Only if the Mini electric frameset is still sold. A60 has 0 on the shelf.
+FS-HAGEN-MINI-E,A65,1,kit,needs_confirmation,,Hagen fork.
+FS-HAGEN-MINI-E,A96,4,kit,needs_confirmation,,Headset bearings.

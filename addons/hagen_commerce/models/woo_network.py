@@ -54,7 +54,7 @@ class HagenWooNetwork(models.Model):
         string='Shops',
         context={'active_test': False},
     )
-    last_discovery = fields.Text(readonly=True)
+    last_discovery = fields.Text(string='Last check', readonly=True)
 
     def _auth(self):
         self.ensure_one()
@@ -67,6 +67,31 @@ class HagenWooNetwork(models.Model):
         for network in self:
             network._discover_sites()
         return True
+
+    def action_test_connection(self):
+        """Read one order from every shop with the network password. Imports and posts nothing."""
+        self.ensure_one()
+        if not self._auth():
+            raise UserError(_('Set the WordPress username and application password on %s first.') % self.name)
+        lines = []
+        for store in self.store_ids.with_context(active_test=False).filtered('base_url'):
+            try:
+                store._woo_request('GET', 'orders', params={'per_page': 1})
+                lines.append(_('%s: connected') % store.name)
+            except UserError as error:
+                lines.append(_('%s: %s') % (store.name, str(error)[:160]))
+        self.last_discovery = '\n'.join(lines)
+        ok = sum(1 for line in lines if line.endswith(_('connected')))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Connection test'),
+                'message': _('%(ok)s of %(total)s shops answered. Details are under Last check.') % {'ok': ok, 'total': len(lines)},
+                'type': 'success' if ok == len(lines) else 'warning',
+                'sticky': True,
+            },
+        }
 
     def action_pull_orders(self):
         stores = self.mapped('store_ids').filtered(lambda store: store.active and store._credentials_ok())
@@ -91,6 +116,12 @@ class HagenWooNetwork(models.Model):
             response = requests.post(url, data=body.encode(), headers={'Content-Type': 'text/xml'}, timeout=45)
         except requests.RequestException as error:
             raise UserError(_('Could not reach the network: %s') % error) from error
+        if response.status_code in (403, 405) or (response.status_code < 400 and 'methodResponse' not in response.text):
+            raise UserError(_(
+                '%(site)s blocks XML-RPC (HTTP %(code)s), so the site list cannot be read automatically. '
+                'The shops listed below are already set up; add a new shop with New on WooCommerce stores, '
+                'or allow /xmlrpc.php for the Odoo server in the hosting firewall.'
+            ) % {'site': self.root_url, 'code': response.status_code})
         if response.status_code >= 400:
             raise UserError(_('WordPress answered %s from %s.') % (response.status_code, url))
         blogs = self._parse_blogs(response.text)
