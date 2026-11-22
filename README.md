@@ -39,8 +39,12 @@ The first run creates `.env` (random passwords for the database, the database ma
 | `./scripts/bootstrap.sh --upgrade` | Load a new version of the Hagen module (and install Purchase if missing). Keeps all data. |
 | `./scripts/bootstrap.sh --reconfigure` | Reload company data and products without dropping the database. |
 | `./scripts/credentials.sh` | Copy WooCommerce keys from `.env` into the database. Does not switch shops on. |
+| `./scripts/backup.sh` | Dump the `blurby` database and the `blurby-data` filestore into `backups/`. Keeps the last 14 (`--keep N`). |
+| `./scripts/restore.sh <stamp-or-path>` | Stop Odoo, replace the database and filestore from that backup, start Odoo. Asks you to type `yes` (`--yes` skips the question). |
 | `docker compose --profile tunnel up -d` | Also start the Cloudflare tunnel (`TUNNEL_TOKEN` from `CLOUDFLARE_TUNNEL_TOKEN`). |
 | `docker compose down` | Stop. Keeps the database. `down -v` deletes it. |
+
+`./scripts/backup.sh` stops Odoo for the copy, writes `backups/blurby-YYYYmmdd-HHMMSS.dump` (`pg_dump -Fc`) and `backups/blurby-YYYYmmdd-HHMMSS-filestore.tar.gz` (the `blurby-data` volume, `/var/lib/odoo`), then starts Odoo again. Pass a stamp, `backups/blurby-<stamp>`, or the `.dump` path to `./scripts/restore.sh`. `backups/` is gitignored. The files hold the database, password hashes and the filestore, so leave them on the laptop.
 
 ## Office computer and this laptop
 
