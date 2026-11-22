@@ -8,6 +8,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from . import webshop_options as options
+from .woo_http import request as woo_request
 
 _logger = logging.getLogger(__name__)
 
@@ -79,7 +80,9 @@ class HagenWooStore(models.Model):
         root = self.base_url.strip().rstrip('/')
         url = f'{root}/wp-json/wc/v3/{path.lstrip("/")}'
         try:
-            response = requests.request(
+            # auth is HTTP Basic: consumer key/secret, or the network
+            # WordPress user and application password.
+            response = woo_request(
                 method,
                 url,
                 params=params,
@@ -101,10 +104,30 @@ class HagenWooStore(models.Model):
         return response.json()
 
     def action_test_connection(self):
+        """Read one product. A bad key or an unreachable shop is reported, not raised."""
         self.ensure_one()
-        self._woo_request('GET', 'products', params={'per_page': 1})
-        self.last_sync_message = _('Connection succeeded.')
-        return True
+        failed = False
+        try:
+            self._woo_request('GET', 'products', params={'per_page': 1})
+            message = _('Connection succeeded.')
+        except UserError as error:
+            failed = True
+            message = str(error)
+        except Exception as error:
+            _logger.exception('Connection test failed for %s', self.name)
+            failed = True
+            message = _('Could not reach %s: %s') % (self.name, error)
+        self.last_sync_message = message
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Connection test'),
+                'message': message,
+                'type': 'warning' if failed else 'success',
+                'sticky': failed,
+            },
+        }
 
     def action_pull_orders(self):
         imported = 0

@@ -33,8 +33,11 @@ NEW_PARTS = (
 COMPANY_VAT = '25979923-2-43'
 COMPANY_SEAT = {'street': 'Öntő utca 5.', 'street2': False, 'zip': '1211', 'city': 'Budapest'}
 
+# Standalone WooCommerce databases. blurbybike.hu is its own shop, not a
+# mirror of blurbybike.com, and pushes stock the same way once it is active.
 STOCK_MASTER_SHOPS = (
     ('Blurby store', 'https://blurbybike.com'),
+    ('Blurby HU store', 'https://blurbybike.hu'),
     ('Hagen store', 'https://hagenbikes.com'),
 )
 
@@ -72,10 +75,31 @@ class HagenSetup(models.AbstractModel):
 
     def _store_addresses(self):
         Store = self.env['hagen.woo.store'].with_context(active_test=False)
+        journal = self.env['account.journal'].search([
+            ('code', '=', 'STRP'),
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
         for name, url in STOCK_MASTER_SHOPS:
             store = Store.search([('name', '=', name), ('company_id', '=', self.env.company.id)], limit=1)
-            if store and not store.base_url:
-                store.base_url = url
+            if not store:
+                Store.create({
+                    'name': name,
+                    'base_url': url,
+                    'company_id': self.env.company.id,
+                    'payment_journal_id': journal.id,
+                    'active': False,
+                    'stock_sync': True,
+                })
+                continue
+            values = {}
+            if not store.base_url:
+                values['base_url'] = url
+            if journal and not store.payment_journal_id:
+                values['payment_journal_id'] = journal.id
+            if not store.stock_sync and not store.active:
+                values['stock_sync'] = True
+            if values:
+                store.write(values)
 
     def _company_seat(self):
         company = self.env.company.sudo()

@@ -3,6 +3,7 @@
 set -euo pipefail
 
 echo "On this computer: http://127.0.0.1:18469"
+echo "Public URL (tunnel hagen-odoo -> http://odoo:8069): https://erp.hagenbikes.com"
 if command -v ip >/dev/null 2>&1; then
   ip -4 -o addr show scope global | awk '{print $4}' | cut -d/ -f1 | while read -r addr; do
     case "$addr" in

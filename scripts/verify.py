@@ -118,8 +118,23 @@ def main():
         [],
         context={"active_test": False},
     )
-    if stores < 22:
-        raise SystemExit(f"expected the Rattaproff shops plus Blurby and Hagen, found {stores}")
+    if stores < 23:
+        raise SystemExit(f"expected Blurby, Blurby HU, Hagen and the 20 Rattaproff shops, found {stores}")
+    blurby_hu = execute(
+        models, uid, password, "hagen.woo.store", "search_read",
+        [("name", "=", "Blurby HU store")],
+        fields=["base_url", "stock_sync", "network_id", "active"],
+        context={"active_test": False},
+        limit=1,
+    )
+    if (
+        not blurby_hu
+        or blurby_hu[0]["base_url"] != "https://blurbybike.hu"
+        or not blurby_hu[0]["stock_sync"]
+        or blurby_hu[0]["network_id"]
+        or blurby_hu[0]["active"]
+    ):
+        raise SystemExit(f"Blurby HU store is not a switched-off stock master: {blurby_hu}")
     rattaproff = execute(
         models, uid, password, "hagen.woo.store", "search_read",
         [("base_url", "=", "https://rattaproff.ee")],

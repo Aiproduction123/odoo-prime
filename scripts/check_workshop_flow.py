@@ -104,7 +104,7 @@ def main():
     check("Blurby store is off", not store.active and store.stock_sync)
     check("cannot switch Blurby store on before the count", raises(ValidationError, lambda: store.write({"active": True})))
     check("stock push blocked before the count", raises(UserError, store._push_stock))
-    check("all 22 shops are off", not env["hagen.woo.store"].search_count([]))
+    check("all 23 shops are off", not env["hagen.woo.store"].search_count([]))
     cron = env.ref("hagen_commerce.ir_cron_hagen_woo_sync")
     check("sync runs every 15 minutes", cron.active and cron.interval_number == 15 and cron.interval_type == "minutes")
 

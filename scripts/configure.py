@@ -261,9 +261,10 @@ def books_stage():
     })
     admin.password = password
 
-    # Fallback for jobs that have no browser. A laptop on localhost and an
-    # office computer on the network address each keep the host they opened.
-    env["ir.config_parameter"].set_param("web.base.url", "http://127.0.0.1:18469")
+    # Fallback for jobs that have no browser. A request from the laptop,
+    # the office LAN, or https://erp.hagenbikes.com keeps the host it opened
+    # (web.base.url.freeze is false). The tunnel sends that hostname to http://odoo:8069.
+    env["ir.config_parameter"].set_param("web.base.url", "https://erp.hagenbikes.com")
     env["ir.config_parameter"].set_param("web.base.url.freeze", "False")
     env["ir.config_parameter"].set_param("blurby.setup_version", "1")
     commit()

@@ -31,13 +31,15 @@ Docker and Docker Compose v2 are required.
 ./scripts/bootstrap.sh
 ```
 
-The first run creates `.env` (random passwords for the database, the database manager, `ivari` and `workshop`), starts Postgres, builds the database and starts Odoo at `http://127.0.0.1:18469`.
+The first run creates `.env` (random passwords for the database, the database manager, `ivari` and `workshop`; empty WooCommerce keys), starts Postgres, builds the database, loads keys with `scripts/credentials.sh` and starts Odoo at `http://127.0.0.1:18469`. The container service is named `odoo` and listens on port **8069**. Shops stay inactive until Opening Inventory 2026 is applied.
 
 | Command | What it does |
 | --- | --- |
 | `docker compose up -d` | Start again after a reboot. |
 | `./scripts/bootstrap.sh --upgrade` | Load a new version of the Hagen module (and install Purchase if missing). Keeps all data. |
 | `./scripts/bootstrap.sh --reconfigure` | Reload company data and products without dropping the database. |
+| `./scripts/credentials.sh` | Copy WooCommerce keys from `.env` into the database. Does not switch shops on. |
+| `docker compose --profile tunnel up -d` | Also start the Cloudflare tunnel (`TUNNEL_TOKEN` from `CLOUDFLARE_TUNNEL_TOKEN`). |
 | `docker compose down` | Stop. Keeps the database. `down -v` deletes it. |
 
 ## Office computer and this laptop
@@ -46,13 +48,17 @@ Odoo listens on port **18469** on every network address of the machine that runs
 
 If the office computer cannot connect, the machine running Docker is blocking the port: `sudo ufw allow 18469/tcp` on Linux, or allow inbound TCP 18469 on private networks on Windows.
 
-From outside the office, a Cloudflare quick tunnel works without opening the router:
+From outside the office, the named Cloudflare tunnel **hagen-odoo** serves `https://erp.hagenbikes.com` and sends it to `http://odoo:8069` on the Docker network. Put the tunnel token in `.env` as `CLOUDFLARE_TUNNEL_TOKEN` and start the compose profile:
+
+```bash
+docker compose --profile tunnel up -d
+```
+
+A one-off quick tunnel still works without that token:
 
 ```bash
 cloudflared tunnel --no-autoupdate --url http://127.0.0.1:18469
 ```
-
-It prints a `https://….trycloudflare.com` address that changes every time it starts. For a fixed address, create a named tunnel in the Cloudflare dashboard.
 
 ## Who sees what
 
@@ -77,7 +83,7 @@ Validating updates on-hand stock at once. The webshop numbers follow on the next
 
 ## Opening Inventory 2026 and the webshop gate
 
-All 22 webshops are switched off. Odoo refuses to switch a stock-master shop (Blurby, Hagen) on, and refuses to push stock, until the opening count has been applied. This stops Odoo from pushing zeros or the old spreadsheet numbers to the live shops.
+All 23 webshops are switched off. Odoo refuses to switch a stock-master shop (Blurby, Blurby HU, Hagen) on, and refuses to push stock, until the opening count has been applied. This stops Odoo from pushing zeros or the old spreadsheet numbers to the live shops.
 
 1. Print or share `data/opening_inventory_2026.csv`. It lists every part, bike and frameset at WH/Stock with the 2025-12-31 sheet quantity for reference. Fill `counted_qty` on the shelf. Leave a row blank if it was not counted, so it is never set to zero. Leave the two FS-HAGEN rows blank, because framesets are counted as parts. The new parts A154–A162 are listed with sheet quantity 0.
 2. Either type the counts in Inventory → Operations → **Physical Inventory** (every part already has a line; remove the default “My Counts” filter to see them), or copy the file into `data/` and run:
@@ -114,7 +120,7 @@ Columns: `bike_code, part_code, qty_per_bike, bom_type, status, sheet_code, note
 
 ## WooCommerce stores
 
-Sales → WooCommerce stores. **Blurby store** (`https://blurbybike.com`) and **Hagen store** (`https://hagenbikes.com`) have their addresses filled in. Both are off, and neither has keys yet.
+Sales → WooCommerce stores. **Blurby store** (`https://blurbybike.com`), **Blurby HU store** (`https://blurbybike.hu`) and **Hagen store** (`https://hagenbikes.com`) have their addresses filled in. blurbybike.hu is its own WooCommerce database, not a copy of blurbybike.com, and it pushes stock like the other two. All three are off. Keys come from `.env` (`BLURBY_WC_KEY` / `BLURBY_WC_SECRET`, `BLURBY_HU_WC_KEY` / `BLURBY_HU_WC_SECRET`, `HAGEN_WC_KEY` / `HAGEN_WC_SECRET`) when you run `./scripts/credentials.sh`. `change-me` and blank values are skipped.
 
 | Field | Where it comes from |
 | --- | --- |
@@ -160,16 +166,16 @@ On a complete bike the accessories are added to the manufacturing order. On a fr
 
 **Stock push.** Every 15 minutes each active stock-master shop gets “Sellable on webshops” for simple products whose SKU is an Odoo code, and for every enabled variation of every variable product (by SKU, or by its options as above).
 
-hagenbikes.com is behind a Cloudflare bot check (“Just a moment…”), which can also block Odoo's REST calls. If **Test connection** fails with HTTP 403, add a WAF skip rule for `/wp-json/wc/` from the office's public IP address.
+Shop requests send `User-Agent: Odoo hagen_commerce/1.0`. Cloudflare answers 403 to the default python-requests agent. Standalone shops authenticate with the WooCommerce consumer key and secret (HTTP Basic). If **Test connection** still fails with HTTP 403, add a WAF skip rule for `/wp-json/wc/` from the server's public IP address. A failed test is shown on the form and does not raise a traceback.
 
 The optional webhook is `POST /hagen/woo/<store id>/<webhook token>`. The scheduled sync does not need a public address.
 
 ## Rattaproff multisite
 
-Sales → **WooCommerce network** → Rattaproff network (`https://rattaproff.ee`), with 20 shops already listed: Rattaproff, Fahrrad 7, Cykelpoint.dk, Cykelpoint.se, Rowerkról.pl, Bicinegozio, Velocentras, Bicirey, Velochic, BajkRaj.hr, BajkRaj.cz, BajkRaj.si, BajkRaj.sk, Olabike, Tudobike, BikeRai, Velosklad, Visivelo, Polkimet, Fietsgear.
+Sales → **WooCommerce network** → Rattaproff network (`https://rattaproff.ee`), with 20 active multisite shops (WordPress blog id, then domain): 1 rattaproff.ee, 3 velochic.fr, 4 fahrrad7.de, 5 bicirey.es, 6 bicinegozio.it, 7 fietsgear.nl, 8 polkimet.fi, 9 rowerkrol.pl, 10 velocentras.lt, 11 visivelo.lv, 12 bajkraj.sk, 13 bajkraj.si, 14 bajkraj.cz, 15 bajkraj.hr, 16 cykelpoint.dk, 17 velosklad.bg, 18 cykelpoint.se, 19 bikerai.ro, 20 tudobike.pt, 21 olabike.gr. Blog 2 is not in the list.
 
 1. On rattaproff.ee, as a network super admin: Users → Profile → Application Passwords → add one named “Odoo”.
-2. Paste the username and the password on the network form, save, then click **Test connection**. It reads one order from each shop and imports nothing. The result is under Last check.
+2. Put the WordPress user and application password in `.env` as `RATTAPROFF_WP_USER` and `RATTAPROFF_APP_PASSWORD`, then run `./scripts/credentials.sh`. Or paste them on the network form. **Test connection** reads one order from each shop over HTTP Basic on `/wp-json/wc/v3/` and imports nothing. The result is under Last check. A failed test does not raise a traceback.
 3. Switch shops on once the opening inventory is applied.
 
 Paid orders become posted customer invoices with the VAT Woo charged (the Estonian shop charges 24%) in the order's currency at the ECB rate, and card payments are booked on STRP. Unknown SKUs are created as non-stock products. Stock is not pushed to these shops. rattaproff.ee blocks XML-RPC, so **Discover shops** cannot read the site list; add new shops with New on WooCommerce stores.

@@ -69,8 +69,11 @@ def main():
             raise SystemExit(f"{module_name} is not installed")
 
     stores = env["hagen.woo.store"].with_context(active_test=False).search([])
-    if len(stores) < 2:
-        raise SystemExit(f"expected two WooCommerce stores, found {len(stores)}")
+    if len(stores) < 23:
+        raise SystemExit(f"expected 23 WooCommerce stores, found {len(stores)}")
+    blurby_hu = stores.filtered(lambda row: row.name == "Blurby HU store")[:1]
+    if not blurby_hu or blurby_hu.base_url != "https://blurbybike.hu" or not blurby_hu.stock_sync or blurby_hu.network_id:
+        raise SystemExit(f"Blurby HU store is not a stock master: {blurby_hu}")
 
     bike = env["product.product"].search([("default_code", "=", "M-001")], limit=1)
     part = env["product.product"].search([("default_code", "=", "A34")], limit=1)

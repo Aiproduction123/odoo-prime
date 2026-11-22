@@ -2,6 +2,14 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+# Same shops as hagen.setup.STOCK_MASTER_SHOPS. blurbybike.hu has its own
+# WooCommerce database and is a stock master, created switched off.
+STOCK_MASTER_SHOPS = (
+    ('Blurby store', 'https://blurbybike.com'),
+    ('Blurby HU store', 'https://blurbybike.hu'),
+    ('Hagen store', 'https://hagenbikes.com'),
+)
+
 COMPANY_DETAILS = (
     "<p>Hagen Group Kft.<br/>"
     "1053 Budapest, Kecskeméti utca 5.<br/>"
@@ -74,12 +82,25 @@ def post_init_hook(env):
         })
 
     Store = env['hagen.woo.store'].with_context(active_test=False)
-    for name in ('Blurby store', 'Hagen store'):
-        if not Store.search([('name', '=', name), ('company_id', '=', company.id)], limit=1):
+    for name, url in STOCK_MASTER_SHOPS:
+        store = Store.search([('name', '=', name), ('company_id', '=', company.id)], limit=1)
+        if not store:
             Store.create({
                 'name': name,
+                'base_url': url,
                 'company_id': company.id,
                 'payment_journal_id': journal.id,
                 'active': False,
+                'stock_sync': True,
             })
+            continue
+        values = {}
+        if not store.base_url:
+            values['base_url'] = url
+        if not store.payment_journal_id:
+            values['payment_journal_id'] = journal.id
+        if not store.stock_sync and not store.active:
+            values['stock_sync'] = True
+        if values:
+            store.write(values)
     _logger.info("Hagen Group commerce is ready for %s", company.name)
