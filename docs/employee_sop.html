@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Hagen Group workshop cheat sheet</title><style>
+@page { size: A4; margin: 11mm 13mm; }
+* { box-sizing: border-box; }
+body { font: 10.4pt/1.36 "Helvetica Neue", Arial, sans-serif; color: #111; margin: 0; }
+h1 { font-size: 17pt; margin: 0 0 2pt; letter-spacing: -0.2pt; }
+h1 + p { margin: 0 0 6pt; color: #444; font-size: 9.6pt; }
+h2 { font-size: 12pt; margin: 9pt 0 3pt; padding: 3pt 6pt; background: #111; color: #fff; border-radius: 3pt; }
+p { margin: 3pt 0; }
+ol, ul { margin: 2pt 0 4pt; padding-left: 16pt; }
+li { margin: 1.2pt 0; }
+strong { font-weight: 700; }
+h2:last-of-type + ul { columns: 1; font-size: 9.8pt; }
+</style></head><body><h1>Hagen Group workshop cheat sheet</h1>
+<p>Öntő utca 5., 1211 Budapest · Odoo login: <strong>workshop</strong> · Hungarian screen names in [brackets]</p>
+<p>Open Odoo, sign in, and you land on <strong>Inventory → Overview</strong> [Készlet → Áttekintés]. You only see three apps: <strong>Sales</strong> [Értékesítés], <strong>Inventory</strong> [Készlet], <strong>Manufacturing</strong> [Gyártás]. Prices and supplier bills are not shown to you. That is on purpose.</p>
+<h2>1. Receiving new parts</h2>
+<p><strong>A. Delivery we ordered (there is a purchase order)</strong></p>
+<ol>
+<li>Inventory → Overview → <strong>Receipts</strong> [Beszállítások] card → open the line with the supplier's name.</li>
+<li>In <strong>Quantity</strong> [Mennyiség], type what is really in the box. Change only the lines that differ.</li>
+<li>Click <strong>Validate</strong> [Jóváhagyás].</li>
+</ol>
+<p>If less arrived than ordered, Odoo keeps the rest open as a new receipt (backorder [visszamaradt rendelés]) by itself. Do not cancel it.</p>
+<p><strong>B. Parts arrive with no order (direct receipt)</strong></p>
+<ol>
+<li>Inventory → Overview → <strong>Receipts</strong> [Beszállítások] → <strong>New</strong> [Új].</li>
+<li><strong>Receive From</strong> [Partner]: the supplier. <strong>Add a line</strong> [Új sor]: part code (e.g. A65) and quantity. Repeat for each part.</li>
+<li>Click <strong>Validate</strong> [Jóváhagyás].</li>
+</ol>
+<p>Stock updates at once. The webshops show the new numbers within 15 minutes. Put the parts on their shelf before the next job.</p>
+<h2>2. Building a bike</h2>
+<ol>
+<li>Manufacturing → <strong>Manufacturing Orders</strong> [Gyártási rendelések]. Webshop orders for complete bikes create these by themselves.</li>
+<li>Open the order. Check <strong>Components</strong> [Komponensek]: green means the parts are in stock. Red means a part is missing, so tell the office before you start.</li>
+<li>Build the bike. If you used a different quantity of a part, correct it on its line.</li>
+<li>Click <strong>Produce All</strong> (if shown), then <strong>Validate</strong> [Jóváhagyás] until the status says <strong>Done</strong> [Kész].</li>
+</ol>
+<p>Done removes the parts from stock and adds 1 finished bike. Never mark an order Done before the bike is really built.</p>
+<h2>3. Fulfilling a webshop order</h2>
+<ol>
+<li>Inventory → Overview → <strong>Delivery Orders</strong> [Szállítólevelek] card → open the order. <strong>Source Document</strong> [Forrás dokumentum] shows the sales order and webshop number.</li>
+<li>Status <strong>Ready</strong> [Előkészítve]: all items are in stock. <strong>Waiting</strong> [Várakozó]: a bike is still being built (section 2) or parts are missing.</li>
+<li>Pack exactly the listed lines. A frameset order lists frame, fork (A65) and headset bearings (A96): they go in the same box.</li>
+<li>Click <strong>Validate</strong> [Jóváhagyás]. Write the order number on the box.</li>
+</ol>
+<h2>Rules</h2>
+<ul>
+<li>Never type a quantity you did not count. When unsure, ask the office first.</li>
+<li>Broken part: Inventory → Operations → <strong>Scrap</strong> [Selejt], not a delete.</li>
+<li>Shelf count (Opening Inventory 2026): Inventory → Operations → <strong>Physical Inventory</strong> [Fizikai leltár]. Type the <strong>Counted Quantity</strong> [Számolt mennyiség] only. The office clicks <strong>Apply All</strong> [Összes alkalmazása].</li>
+<li>Something looks wrong? Stop, do not click Validate, and call Ivari.</li>
+</ul></body></html>

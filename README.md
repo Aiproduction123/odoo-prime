@@ -1,8 +1,10 @@
-# Hagen Group invoicing
+# Hagen Group ERP
 
-Self-hosted [Odoo 19 Community](https://www.odoo.com/) for **Hagen Group Kft.** (formerly BLURBY Korlátolt Felelősségű Társaság). It covers Hungarian invoicing, the parts catalog, kit recipes for bikes, and a multi-store WooCommerce connector that treats Odoo as the stock master.
+Self-hosted [Odoo 19 Community](https://www.odoo.com/) for **Hagen Group Kft.** (formerly BLURBY Korlátolt Felelősségű Társaság). It covers Hungarian invoicing, purchasing and receiving, the parts catalog, bike recipes, a simple workshop login, and a multi-store WooCommerce connector that treats Odoo as the stock master.
 
-Odoo here is the Community edition. The Invoicing app, the Hungarian chart of accounts (27% / 18% / 5% ÁFA), Manufacturing, and the NAV 3.0 e-invoicing module are all in Community. NAV itself is not connected: the company stays in **demo** mode, which mocks the tax authority and does not file anything. Do not switch that mode until the tax number and seat below have been checked against the current company extract.
+Everything used here is in Community: Invoicing, the Hungarian chart of accounts (27% / 18% / 5% ÁFA), Sales, Purchase, Inventory, Manufacturing, and the NAV 3.0 e-invoicing module. NAV is **not** connected. The company stays in **Demo** mode, which mocks the tax authority and files nothing, and Odoo refuses to leave Demo until the company extract has been confirmed on the NAV go-live form (see [NAV](#nav-e-invoicing)).
+
+The one-page staff cheat sheet is [`docs/employee_sop.md`](docs/employee_sop.md) (print `docs/employee_sop.html`).
 
 ## What is already filled in
 
@@ -12,17 +14,13 @@ Odoo here is the Community edition. The Invoicing app, the Hungarian chart of ac
 | Seat on invoices | 1053 Budapest, Kecskeméti utca 5. |
 | Workshop | 1211 Budapest, Öntő utca 5. (delivery address on the company) |
 | Company register | 01-09-299788 |
-| Tax number kept on the company | 25979923-2-41 |
-| Currency | HUF |
-| Email on documents | info@blurbybike.com |
-| Sign-in | Ivari Kull, `ivari@blurbybike.com`. Screens are in English. Hungarian is installed; switch it under the user menu → Preferences. |
+| Tax number kept on the company | 25979923-2-41 (to be confirmed, see NAV) |
+| Currency | HUF; EUR invoices use the ECB rate |
+| Admin login | `ivari` (Ivari Kull). Password: `BLURBY_ADMIN_PASSWORD` in `.env`. |
+| Workshop login | `workshop`, “Workshop (Öntő utca)”. Password: `HAGEN_EMPLOYEE_PASSWORD` in `.env`. |
 | Stripe journal | Bank journal **Stripe Payments**, code `STRP` |
 
-Installed apps: **Invoicing**, **Sales**, **Inventory**, **Manufacturing**, plus the **Hagen Group commerce** module. Parts A1–A153 and bike models M-001–M-008 are storable products. Workshop labour stays a service. Sales prices are empty on purpose. The sample draft invoice and the “Sample customer (delete me)” contact are removed.
-
-A court-approved rename to Hagen Group Kft. is already reflected here. Later dealership drafts use tax number `25979923-2-43` and put the seat at Öntő utca 5. as well as the workshop. This database still uses `25979923-2-41` and Kecskeméti utca 5., because those were the figures to keep. Confirm the live company extract before leaving NAV demo mode. No bank account is stored in this setup.
-
-Not loaded: historical invoices, bank accounts, NAV technical-user keys, WooCommerce API keys, or live bike recipes. The inventory sheet’s component lists disagree with the part catalog (codes point at different parts than the row names), so no Bill of Materials is active yet.
+Products: parts A1–A153 and bikes M-001–M-008 are storable. The framesets FS-HAGEN-FLAGSHIP, FS-HAGEN-FLAGSHIP-E, FS-HAGEN-XL and FS-HAGEN-XL-E are storable kits. Workshop labour SVC-LABOUR is a service. Sales prices are empty on purpose.
 
 ## Run it
 
@@ -32,94 +30,151 @@ Docker and Docker Compose v2 are required.
 ./scripts/bootstrap.sh
 ```
 
-The first run creates `.env` (passwords), starts Postgres, builds the database, and starts Odoo. Open:
+The first run creates `.env` (random passwords for the database, the database manager, `ivari` and `workshop`), starts Postgres, builds the database and starts Odoo at `http://127.0.0.1:18469`.
 
-`http://127.0.0.1:18469`
-
-Sign in as **ivari**. The password is `BLURBY_ADMIN_PASSWORD` in `.env`. The same login works from the computer that runs Odoo and from any other computer that can reach it, including an office PC.
+| Command | What it does |
+| --- | --- |
+| `docker compose up -d` | Start again after a reboot. |
+| `./scripts/bootstrap.sh --upgrade` | Load a new version of the Hagen module (and install Purchase if missing). Keeps all data. |
+| `./scripts/bootstrap.sh --reconfigure` | Reload company data and products without dropping the database. |
+| `docker compose down` | Stop. Keeps the database. `down -v` deletes it. |
 
 ## Office computer and this laptop
 
-Odoo listens on port **18469** on every network address of the machine that runs Docker. On that machine, open:
+Odoo listens on port **18469** on every network address of the machine that runs Docker. `./scripts/office_url.sh` prints the addresses to open from another computer, such as `http://192.168.1.20:18469`. Any number of people can be signed in at the same time, from any computer, with the same or different logins.
 
-`http://127.0.0.1:18469`
+If the office computer cannot connect, the machine running Docker is blocking the port: `sudo ufw allow 18469/tcp` on Linux, or allow inbound TCP 18469 on private networks on Windows.
 
-From the office computer, use the running machine’s office network address, not localhost. Find that address on the machine running Docker:
-
-```bash
-./scripts/office_url.sh
-```
-
-It prints lines such as `http://192.168.1.20:18469`. Open one of those from the other computer and sign in as **ivari**. Both computers can be signed in at the same time.
-
-If the office computer cannot connect, the machine running Docker is blocking the port. On Linux, allow it with `sudo ufw allow 18469/tcp` when ufw is active. On Windows, allow inbound TCP 18469 on private networks for Docker. The two computers have to be on the same network, or the one running Docker has to be reachable from the office.
-
-Later starts, when the database is already loaded:
+From outside the office, a Cloudflare quick tunnel works without opening the router:
 
 ```bash
-docker compose up -d
+cloudflared tunnel --no-autoupdate --url http://127.0.0.1:18469
 ```
 
-`./scripts/bootstrap.sh` is safe to repeat. It will not rebuild a database that already finished setup. `./scripts/bootstrap.sh --reconfigure` reloads company data, products, and stock counts without dropping the database.
+It prints a `https://….trycloudflare.com` address that changes every time it starts. For a fixed address, create a named tunnel in the Cloudflare dashboard.
 
-Stop it with `docker compose down`. That keeps the database. `docker compose down -v` deletes the database and the file store.
+## Who sees what
+
+| | `ivari` (administrator, group **Office**) | `workshop` (group **Workshop employee**) |
+| --- | --- | --- |
+| Apps | All | Sales, Inventory, Manufacturing |
+| Receive parts, build bikes, ship orders | Yes | Yes |
+| Cost, purchase prices, vendor tab, vendor price list | Yes | Hidden |
+| Purchase orders, vendor bills, payments, Invoicing | Yes | Hidden |
+| Settings, Configuration menus, reporting, WooCommerce stores, recipe import | Yes | Hidden |
+
+Add more staff under Settings → Users & Companies → Users: set **Hagen Group** to *Workshop employee*, and give them no other app rights. The `workshop` user opens on Inventory → Overview.
+
+## Receiving parts
+
+Receipts create a backorder automatically when fewer parts arrive than ordered. No question is asked.
+
+- **Against a purchase order** (office creates it under Purchase → Orders): Inventory → Overview → **Receipts** → open the receipt → type the quantity that arrived → **Validate**.
+- **Without a purchase order:** Inventory → Overview → **Receipts** → **New** → add the parts and quantities → **Validate**.
+
+Validating updates on-hand stock at once. The webshop numbers follow on the next 15-minute sync.
+
+## Opening Inventory 2026 and the webshop gate
+
+All 22 webshops are switched off. Odoo refuses to switch a stock-master shop (Blurby, Hagen) on, and refuses to push stock, until the opening count has been applied. This stops Odoo from pushing zeros or the old spreadsheet numbers to the live shops.
+
+1. Print or share `data/opening_inventory_2026.csv`. It lists every part, bike and frameset at WH/Stock with the 2025-12-31 sheet quantity for reference. Fill `counted_qty` on the shelf. Leave a row blank if it was not counted, so it is never set to zero. Leave the four FS-HAGEN rows blank, because framesets are counted as parts.
+2. Either type the counts in Inventory → Operations → **Physical Inventory** (every part already has a line), or copy the file into `data/` and run:
+
+   ```bash
+   sudo docker compose exec -T odoo odoo shell -d blurby --no-http < scripts/load_opening_counts.py
+   ```
+
+   The script only fills the Counted column. It never applies anything.
+3. Check the differences on Physical Inventory, then click **Apply All** and keep the reference **Opening Inventory 2026**. That opens the gate.
+4. Sales → WooCommerce stores → open each shop → tick **Active**.
+
+## Bike recipes and framesets
+
+Manufacturing → Import bike recipes (administrator), file `data/bom_recipe_template.csv`. To reload it from the command line:
+
+```bash
+sudo docker compose exec -T odoo odoo shell -d blurby --no-http < scripts/import_recipes.py
+```
+
+Columns: `bike_code, part_code, qty_per_bike, bom_type, status, sheet_code, note`.
+
+| `status` | Effect |
+| --- | --- |
+| `confirmed` | Goes into the live recipe (reference “Confirmed recipe”). |
+| `inferred` | Goes only into an archived draft recipe (reference “Draft for sign-off”, together with the confirmed lines). Find drafts under Manufacturing → Products → Bills of Materials → Filters → Archived. To approve a line, change it to `confirmed` and import again. |
+| `needs_confirmation`, `needs_new_part` | Ignored until answered. |
+
+`bom_type`: `kit` ships the parts with the order and needs no manufacturing order (framesets, which are assembled when shipped). `manufacture` is a pre-assembled bike. A sale creates a manufacturing order (Manufacture + Replenish on Order), the parts are consumed when the order is marked Done, and an SVC-LABOUR line adds labour cost without a stock move.
+
+Each sheet code in the 2025-12-31 workbook's recipe blocks is one row too high (A50 for A49, A62 for A61, and so on). The CSV keeps the sheet's code in `sheet_code` and the corrected code in `part_code`.
+
+**One parts pool.** “Sellable on webshops” on every product is the free stock plus what the free parts can still build. Framesets and complete bikes draw on the same frames, A65 forks and A96 bearings, so selling a FS-HAGEN-FLAGSHIP frameset lowers the M-005 number straight away, and the other way round. That number is what Odoo pushes to the Blurby and Hagen shops.
 
 ## WooCommerce stores
 
-Sales → WooCommerce stores. **Blurby store** and **Hagen store** are inactive until you add their addresses and keys.
+Sales → WooCommerce stores. **Blurby store** (`https://blurbybike.com`) and **Hagen store** (`https://hagenbikes.com`) have their addresses filled in. Both are off, and neither has keys yet.
 
 | Field | Where it comes from |
 | --- | --- |
-| Store URL | The shop address, such as `https://blurbybike.com`. Do not append `/wp-json`. |
-| Consumer key | WooCommerce → Settings → Advanced → REST API. Create a key with Read/Write permission. |
-| Consumer secret | Shown once on that same WooCommerce screen. |
+| Consumer key / secret | WooCommerce → Settings → Advanced → REST API → Add key, Read/Write. The secret is shown once. |
+| Test connection | Button on the store form. It reads one product and changes nothing. |
 
-For those two shops, Odoo is the inventory master. Every 15 minutes, an active store with keys pushes sellable quantities to WooCommerce and pulls orders whose status is processing, completed, or the custom status `paid`, and that have a paid date. A kit bike’s sellable quantity is the number that can be built from free components. A bike with no recipe and no finished stock is pushed as zero.
+When a store is active, every 15 minutes it pushes “Sellable on webshops” to products whose Woo SKU equals the Odoo code, and pulls orders that are processing, completed or `paid` with a paid date. Stripe or WooPayments orders get 27% ÁFA (or the rate Woo charged), the payment is booked on **STRP**, and the invoice is Paid. Any other gateway, such as bank transfer or GiroCode, is invoiced and left open.
 
-When the payment method matches the shop’s gateway list (Stripe, or WooPayments), the payment is booked on **Stripe Payments** and the invoice is Paid. Any other paid gateway is confirmed and invoiced, and the invoice is left open.
+hagenbikes.com sells bikes through a configurator. The order line is “Hagen FLAGSHIP” or “Hagen XL” with no SKU, and the choice is in the line options. Odoo maps those lines as follows:
 
-The optional webhook is `POST /hagen/woo/<store id>/<webhook token>`. The token is on the store form. The scheduled sync does not need a public address.
+| Order line | Odoo product |
+| --- | --- |
+| FLAGSHIP, Type “Non-electric” / “Nicht-elektrisch” | M-005 |
+| FLAGSHIP, Type “90 Nm Brose Mid-Motor” | M-006 |
+| XL, Non-electric | M-007 |
+| XL, 90 Nm Brose | M-008 |
+| FLAGSHIP / XL, Type “Frame set” | FS-HAGEN-FLAGSHIP / FS-HAGEN-XL (`-E` if the option says electric) |
+| MINI | No Odoo product yet. Invoiced as a non-stock line. |
+
+Configurator products have no stock per Type in WooCommerce, so the stock push cannot reach them. To push bike and frameset stock, give each Type its own SKU equal to the Odoo code, or make them variations with those SKUs.
+
+hagenbikes.com is behind a Cloudflare bot check (“Just a moment…”), which can also block Odoo's REST calls. If **Test connection** fails with HTTP 403, add a WAF skip rule for `/wp-json/wc/` from the office's public IP address.
+
+The optional webhook is `POST /hagen/woo/<store id>/<webhook token>`. The scheduled sync does not need a public address.
 
 ## Rattaproff multisite
 
-Sales → **WooCommerce network**. The network admin is `https://rattaproff.ee`. These shops are separate WooCommerce sites on that one WordPress install, and each already has an inactive store record:
+Sales → **WooCommerce network** → Rattaproff network (`https://rattaproff.ee`), with 20 shops already listed: Rattaproff, Fahrrad 7, Cykelpoint.dk, Cykelpoint.se, Rowerkról.pl, Bicinegozio, Velocentras, Bicirey, Velochic, BajkRaj.hr, BajkRaj.cz, BajkRaj.si, BajkRaj.sk, Olabike, Tudobike, BikeRai, Velosklad, Visivelo, Polkimet, Fietsgear.
 
-Rattaproff, Fahrrad 7, Cykelpoint.dk, Cykelpoint.se, Rowerkról.pl, Bicinegozio, Velocentras, Bicirey, Velochic, BajkRaj.hr, BajkRaj.cz, BajkRaj.si, BajkRaj.sk, Olabike, Tudobike, BikeRai, Velosklad, Visivelo, Polkimet, Fietsgear.
+1. On rattaproff.ee, as a network super admin: Users → Profile → Application Passwords → add one named “Odoo”.
+2. Paste the username and the password on the network form, save, then click **Test connection**. It reads one order from each shop and imports nothing. The result is under Last check.
+3. Switch shops on once the opening inventory is applied.
 
-One WordPress application password covers every shop. On rattaproff.ee, open Users → Profile → Application Passwords as a network super admin, create a password, and paste the username and password on the network form. Discover shops asks WordPress for the live site list and adds any shop that is not in the list above. A shop’s own REST key still overrides the shared password.
+Paid orders become posted customer invoices with the VAT Woo charged (the Estonian shop charges 24%) in the order's currency at the ECB rate, and card payments are booked on STRP. Unknown SKUs are created as non-stock products. Stock is not pushed to these shops. rattaproff.ee blocks XML-RPC, so **Discover shops** cannot read the site list; add new shops with New on WooCommerce stores.
 
-Turn a shop active after the password is saved. Paid orders are confirmed and posted as customer invoices. The VAT is the rate Woo charged on that order (the Estonian shop charges 24%), not a flat Hungarian 27%. A line whose SKU is not in Odoo yet is created as a non-stock product so the invoice can still be posted. Stock is not pushed back to these shops, because their catalogs are the stock master.
+## NAV e-invoicing
 
-Euro invoices use the European Central Bank forint rate. The latest fixing loaded with this setup is 1 EUR = 363.90 HUF (6 November 2026). The scheduled sync refreshes that rate when the ECB publishes a new one. NAV stays in Demo, so these invoices are not reported.
+NAV stays in **Demo** until two things are done.
 
-## Bike recipes
+1. **Company extract.** The database uses `25979923-2-41` with seat 1053 Budapest, Kecskeméti utca 5. Later dealership documents use `25979923-2-43` with seat 1211 Budapest, Öntő utca 5. Check the current cégkivonat to see which pair is right.
+2. **Technical user.** On onlineszamla.nav.gov.hu → Felhasználók, create a technical user with invoice manage and query rights. Note the username, password, XML signing key (aláírókulcs) and XML exchange key (cserekulcs).
 
-Manufacturing → Import bike recipes. The file to fill in is `data/bom_recipe_template.csv`.
+Then: Invoicing → Configuration → **NAV go-live** (administrator only). Pick the tax number, which also sets the matching seat. Tick the extract confirmation, enter the four credentials, choose Production (or Test with a separate test-portal user), and click **Switch NAV**. Odoo runs a NAV token exchange before saving, which files nothing. If NAV rejects the credentials, nothing changes and the mode stays Demo. Switching the mode directly in Settings is blocked until the form has been used.
 
-Columns: `bike_code`, `part_code`, `qty_per_bike`, `bom_type` (`kit` or `manufacture`), `status`, `note`.
+`scripts/check_nav_demo.py` posts two test invoices (HUF B2B, EUR B2C), builds their NAV 3.0 XML, validates it against the official schema (download it once with `./scripts/fetch_nav_xsd.sh`) and runs the Demo upload, then rolls everything back.
 
-Only rows with `status` set to `confirmed`, a part code, and a quantity above zero are loaded. `kit` is a phantom bill of materials: delivering the bike deducts each part and does not open a manufacturing order. `manufacture` opens a manufacturing order and turns on Replenish on Order for that bike, including workshop labour if you add the labour product as a line. Rows that still say `needs_confirmation` are ignored. The current file is entirely unconfirmed because the sheet and the catalog disagree.
+## Checks
 
-## Issuing an invoice
+All of these run against the live database. The `odoo shell` ones roll back their test data.
 
-1. Set a sales price on the product (Sales → Products), or type the price on the invoice line.
-2. Invoicing → Customers → Invoices → New. Pick the customer and the products. Domestic Hungarian customers get 27% ÁFA (goods tax `F27`, services `F27S`).
-3. Confirm, then send. While NAV mode is Demo, Send does not reach the tax authority.
+```bash
+python3 scripts/verify.py
+sudo docker compose exec -T odoo odoo shell -d blurby --no-http < scripts/check_workshop_flow.py
+sudo docker compose exec -T odoo odoo shell -d blurby --no-http < scripts/check_hagen_flow.py
+sudo docker compose exec -T odoo odoo shell -d blurby --no-http < scripts/check_nav_demo.py
+```
 
-Customer invoices can also be created from a sales order (Sales → Orders). Products are set to invoice on the ordered quantity, so you do not have to validate a delivery first. Stripe orders from WooCommerce do this on their own.
+`check_workshop_flow.py` signs in as the workshop user. It receives parts with and without a purchase order (with a backorder), sells a frameset and a bike from the same parts, finishes the manufacturing order, and checks that costs and the webshop gate stay locked. `check_hagen_flow.py` covers Woo order import, Stripe vs bank transfer, the configurator mapping, Rattaproff EUR invoices and kit deliveries.
 
-## Connecting NAV
-
-Real Hungarian invoices have to be reported to NAV Online Számla. Do this only when you are ready to file, and only after the tax number and registered seat are confirmed:
-
-1. On the NAV portal, create a technical user with “manage invoices” and “query invoices”, and generate the XML signing key and the XML exchange key.
-2. In Odoo: Invoicing → Configuration → Settings → Hungarian Electronic Invoicing.
-3. Switch the mode from Demo to Test and check the keys against the NAV test system. When that succeeds, switch to Production.
-
-The company tax number has to stay in the form `25979923-2-41` (optional `HU` prefix) unless the company extract says otherwise. NAV rejects the short EU form `HU25979923`.
-
-The database manager password is `ODOO_MASTER_PASSWORD` in `.env`. The database list is hidden. Changing `.env` after the first bootstrap does not change the `ivari` password; change that in Odoo under the user menu. Restart Odoo after you change the master password and re-render config with `python3 scripts/render_config.py`.
+The database manager password is `ODOO_MASTER_PASSWORD` in `.env`. Changing `.env` after the first bootstrap does not change existing user passwords; change those in Odoo.
 
 ## Versions
 
-Pinned to `odoo:19.0` and `postgres:16`. Odoo 20 is the newer stable line (September 2026). 19 is pinned because the Hungarian invoicing package on 19 has been in use since 2025. Bump the image tag in `docker-compose.yml` when you want to move.
+Pinned to `odoo:19.0` and `postgres:16`. Bump the image tag in `docker-compose.yml` to move.

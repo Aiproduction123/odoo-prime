@@ -63,11 +63,11 @@ def main():
 
     modules = execute(
         models, uid, password, "ir.module.module", "search_read",
-        [("name", "in", ["account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock", "mrp", "hagen_commerce"]), ("state", "=", "installed")],
+        [("name", "in", ["account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock", "mrp", "purchase", "hagen_commerce"]), ("state", "=", "installed")],
         fields=["name"],
     )
     installed = {row["name"] for row in modules}
-    missing = {"account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock", "mrp", "hagen_commerce"} - installed
+    missing = {"account", "l10n_hu", "l10n_hu_edi", "sale_management", "stock", "mrp", "purchase", "hagen_commerce"} - installed
     if missing:
         raise SystemExit(f"modules not installed: {sorted(missing)}")
 
@@ -128,13 +128,61 @@ def main():
     if len(bikes) < 8 or any(not row["is_storable"] or row["type"] != "consu" for row in bikes):
         raise SystemExit(f"bikes are not all storable: {bikes}")
 
+    framesets = execute(
+        models, uid, password, "product.template", "search_read",
+        [("default_code", "=like", "FS-HAGEN-%")],
+        fields=["default_code", "is_storable"],
+    )
+    expected_fs = {"FS-HAGEN-FLAGSHIP", "FS-HAGEN-FLAGSHIP-E", "FS-HAGEN-XL", "FS-HAGEN-XL-E"}
+    if {row["default_code"] for row in framesets} != expected_fs or not all(row["is_storable"] for row in framesets):
+        raise SystemExit(f"framesets unexpected: {framesets}")
+
+    live_boms = execute(models, uid, password, "mrp.bom", "search_count", [("code", "=", "Confirmed recipe")])
+    draft_boms = execute(
+        models, uid, password, "mrp.bom", "search_count",
+        [("code", "=", "Draft for sign-off"), ("active", "=", False)],
+        context={"active_test": False},
+    )
+    if live_boms < 10 or draft_boms < 1:
+        raise SystemExit(f"bike recipes not imported: live={live_boms} drafts={draft_boms}")
+
+    workshop = execute(
+        models, uid, password, "res.users", "search_read",
+        [("login", "=", "workshop")],
+        fields=["all_group_ids"],
+        limit=1,
+    )
+    if not workshop:
+        raise SystemExit("workshop login is missing")
+    admin_groups = execute(
+        models, uid, password, "res.groups", "search_read",
+        [("id", "in", workshop[0]["all_group_ids"])],
+        fields=["full_name"],
+    )
+    names = {row["full_name"] for row in admin_groups}
+    leaked = [name for name in names if any(word in name for word in ("Administration", "Accounting", "Invoicing", "Purchase"))]
+    if leaked:
+        raise SystemExit(f"workshop login has office rights: {leaked}")
+
+    opening_done = execute(
+        models, uid, password, "ir.config_parameter", "search_count",
+        [("key", "=", "hagen_commerce.opening_inventory_applied")],
+    )
+    active_stores = execute(models, uid, password, "hagen.woo.store", "search_count", [("active", "=", True)])
+    if not opening_done and active_stores:
+        raise SystemExit(f"{active_stores} webshops are on before the opening inventory was applied")
+
     print(
         "OK",
         company["name"],
         company["vat"],
         company["l10n_hu_edi_server_mode"],
         f"parts={parts}",
-        f"stores={stores}",
+        f"framesets={len(framesets)}",
+        f"recipes={live_boms} live/{draft_boms} drafts",
+        f"stores={stores} ({active_stores} on)",
+        "opening_inventory=" + ("applied" if opening_done else "waiting"),
+        "workshop=ok",
         "journal=STRP",
     )
 
