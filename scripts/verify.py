@@ -49,9 +49,9 @@ def main():
     )[0]
     checks = {
         "name": company["name"] == "Hagen Group Kft.",
-        "vat": company["vat"] == "25979923-2-41",
+        "vat": company["vat"] == "25979923-2-43",
         "registry": company["company_registry"] == "01-09-299788",
-        "address": company["zip"] == "1053" and company["city"] == "Budapest" and company["street"] == "Kecskeméti utca 5.",
+        "address": company["zip"] == "1211" and company["city"] == "Budapest" and company["street"] == "Öntő utca 5.",
         "chart": company["chart_template"] == "hu",
         "currency": "HUF" in (company["currency_id"][1] or ""),
         "email": company["email"] == "info@blurbybike.com",
@@ -72,8 +72,18 @@ def main():
         raise SystemExit(f"modules not installed: {sorted(missing)}")
 
     parts = execute(models, uid, password, "product.template", "search_count", [("default_code", "=like", "A%")])
-    if parts < 153:
-        raise SystemExit(f"expected 153 parts, found {parts}")
+    if parts < 160:
+        raise SystemExit(f"expected 160 active parts, found {parts}")
+    new_parts = execute(
+        models, uid, password, "product.product", "search_read",
+        [("default_code", "in", [f"A{n}" for n in range(154, 163)])],
+        fields=["default_code", "is_storable"],
+    )
+    if len(new_parts) != 9 or not all(row["is_storable"] for row in new_parts):
+        raise SystemExit(f"new parts A154-A162 are not all storable: {new_parts}")
+    mini = execute(models, uid, password, "product.template", "search_count", [("default_code", "in", ["A59", "A60"])])
+    if mini:
+        raise SystemExit("Hagen Mini frames A59/A60 are still active")
 
     quant = execute(
         models, uid, password, "stock.quant", "search_read",
@@ -133,18 +143,18 @@ def main():
         [("default_code", "=like", "FS-HAGEN-%")],
         fields=["default_code", "is_storable"],
     )
-    expected_fs = {"FS-HAGEN-FLAGSHIP", "FS-HAGEN-FLAGSHIP-E", "FS-HAGEN-XL", "FS-HAGEN-XL-E"}
+    expected_fs = {"FS-HAGEN-FLAGSHIP", "FS-HAGEN-XL"}
     if {row["default_code"] for row in framesets} != expected_fs or not all(row["is_storable"] for row in framesets):
         raise SystemExit(f"framesets unexpected: {framesets}")
 
     live_boms = execute(models, uid, password, "mrp.bom", "search_count", [("code", "=", "Confirmed recipe")])
     draft_boms = execute(
         models, uid, password, "mrp.bom", "search_count",
-        [("code", "=", "Draft for sign-off"), ("active", "=", False)],
+        [("code", "=", "Draft for sign-off"), ("product_tmpl_id.active", "=", True)],
         context={"active_test": False},
     )
-    if live_boms < 10 or draft_boms < 1:
-        raise SystemExit(f"bike recipes not imported: live={live_boms} drafts={draft_boms}")
+    if live_boms != 10 or draft_boms:
+        raise SystemExit(f"expected 10 live recipes and no drafts: live={live_boms} drafts={draft_boms}")
 
     workshop = execute(
         models, uid, password, "res.users", "search_read",

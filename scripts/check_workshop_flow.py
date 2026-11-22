@@ -31,6 +31,14 @@ def sellable(code):
     return product(code)._hagen_sellable_qty(WAREHOUSE)
 
 
+def set_free(code, qty):
+    item = product(code)
+    delta = qty - item._hagen_free_units(WAREHOUSE)
+    if delta:
+        env["stock.quant"]._update_available_quantity(item, WAREHOUSE.lot_stock_id, delta)
+    env.invalidate_all()
+
+
 def finish(picking_or_mo, method):
     result = getattr(picking_or_mo, method)()
     while isinstance(result, dict) and result.get("res_model"):
@@ -100,8 +108,19 @@ def main():
     cron = env.ref("hagen_commerce.ir_cron_hagen_woo_sync")
     check("sync runs every 15 minutes", cron.active and cron.interval_number == 15 and cron.interval_type == "minutes")
 
-    before = {code: sellable(code) for code in ("FS-HAGEN-FLAGSHIP", "M-005", "FS-HAGEN-FLAGSHIP-E", "M-006")}
-    check("sheet has no Hagen forks, so Hagen kits start at 0", all(v == 0 for v in before.values()), str(before))
+    # Known starting point: every other Hagen part on the shelf, fork, bearings, steering rod and motor at 0.
+    received = {"A65": 0, "A96": 0, "A161": 0, "A78": 0}
+    for code in ("M-005", "M-006", "FS-HAGEN-FLAGSHIP", "FS-HAGEN-XL"):
+        recipe = env["mrp.bom"]._bom_find(product(code))[product(code)]
+        for line in recipe.bom_line_ids.filtered(lambda line: line.product_id.is_storable):
+            if line.product_id.default_code not in received:
+                set_free(line.product_id.default_code, 5)
+    set_free("A61", 1)
+    set_free("A62", 6)
+    for code, qty in received.items():
+        set_free(code, qty)
+    before = {code: sellable(code) for code in ("FS-HAGEN-FLAGSHIP", "M-005", "FS-HAGEN-XL", "M-006")}
+    check("no Hagen forks on the shelf, so Hagen bikes and kits start at 0", all(v == 0 for v in before.values()), str(before))
 
     # Receiving without a purchase order: New, add a line, quantity, Validate.
     receipt = as_employee["stock.picking"].create({
@@ -111,13 +130,14 @@ def main():
         "move_ids": [
             (0, 0, {"product_id": product("A65").id, "product_uom_qty": 2, "location_id": suppliers.id, "location_dest_id": stock.id}),
             (0, 0, {"product_id": product("A96").id, "product_uom_qty": 8, "location_id": suppliers.id, "location_dest_id": stock.id}),
+            (0, 0, {"product_id": product("A161").id, "product_uom_qty": 2, "location_id": suppliers.id, "location_dest_id": stock.id}),
         ],
     })
     finish(receipt, "button_validate")
     check("direct receipt validated by the employee", receipt.state == "done", receipt.name)
     check("on hand updated", on_hand("A65") == 2 and on_hand("A96") == 8, f"A65={on_hand('A65')} A96={on_hand('A96')}")
-    after = {code: sellable(code) for code in ("FS-HAGEN-FLAGSHIP", "M-005", "FS-HAGEN-FLAGSHIP-E", "FS-HAGEN-XL-E")}
-    check("receipt raised frameset and bike counts", after == {"FS-HAGEN-FLAGSHIP": 1, "M-005": 1, "FS-HAGEN-FLAGSHIP-E": 2, "FS-HAGEN-XL-E": 2}, str(after))
+    after = {code: sellable(code) for code in ("FS-HAGEN-FLAGSHIP", "M-005", "FS-HAGEN-XL", "M-006")}
+    check("receipt raised frameset and bike counts", after == {"FS-HAGEN-FLAGSHIP": 1, "M-005": 1, "FS-HAGEN-XL": 2, "M-006": 0}, str(after))
 
     # Receiving against a purchase order, partial delivery, automatic backorder.
     vendor = env["res.partner"].create({"name": "Brose test supplier", "supplier_rank": 1})
@@ -128,16 +148,16 @@ def main():
     po.button_confirm()
     po_receipt = as_employee["stock.picking"].browse(po.picking_ids.ids)
     check("PO created a scheduled receipt", len(po_receipt) == 1 and po_receipt.name.startswith("WH/IN/"), po_receipt.name)
-    po_receipt.move_ids.quantity = 1
+    po_receipt.move_ids.quantity = 2
     finish(po_receipt, "button_validate")
     backorder = env["stock.picking"].search([("backorder_id", "=", po_receipt.id)])
-    check("partial receipt done", po_receipt.state == "done" and on_hand("A78") == 1)
-    check("backorder opened for the rest", len(backorder) == 1 and backorder.move_ids.product_uom_qty == 2, backorder.name)
+    check("partial receipt done", po_receipt.state == "done" and on_hand("A78") == 2)
+    check("backorder opened for the rest", len(backorder) == 1 and backorder.move_ids.product_uom_qty == 1, backorder.name)
     picking_views = as_employee["stock.picking"].get_views([(False, "form"), (False, "list")])
     picking_arch = " ".join(view["arch"] for view in picking_views["views"].values())
     check("receipt screen shows no purchase price", 'name="price_unit"' not in picking_arch and "amount_total" not in picking_arch)
     check("Purchase app is not on the employee menu", env.ref("purchase.menu_purchase_root").id not in Menu._visible_menu_ids())
-    check("Flagship electric now buildable", sellable("M-006") == 1, str(sellable("M-006")))
+    check("Flagship electric now buildable", sellable("M-006") == 2, str(sellable("M-006")))
 
     # Shared pool: a frameset sale lowers the bike, a bike sale lowers the frameset.
     customer = env["res.partner"].create({"name": "Pool test customer", "country_id": env.ref("base.hu").id})
@@ -146,9 +166,9 @@ def main():
         "order_line": [(0, 0, {"product_id": product("FS-HAGEN-FLAGSHIP").id, "product_uom_qty": 1, "price_unit": 1})],
     })
     kit_sale.action_confirm()
-    pool = {code: sellable(code) for code in ("FS-HAGEN-FLAGSHIP", "M-005", "FS-HAGEN-FLAGSHIP-E", "M-006")}
+    pool = {code: sellable(code) for code in ("FS-HAGEN-FLAGSHIP", "M-005", "FS-HAGEN-XL", "M-006")}
     check("frameset sale lowered the matching bike", pool["FS-HAGEN-FLAGSHIP"] == 0 and pool["M-005"] == 0, str(pool))
-    check("frameset sale lowered other Hagen fork users", pool["FS-HAGEN-FLAGSHIP-E"] == 1 and pool["M-006"] == 1, str(pool))
+    check("frameset sale lowered other Hagen fork users", pool["FS-HAGEN-XL"] == 1 and pool["M-006"] == 1, str(pool))
     check("Woo push uses the same number", store._qty_for_store(product("M-005")) == 0)
 
     bike_sale = env["sale.order"].create({
@@ -158,15 +178,16 @@ def main():
     bike_sale.action_confirm()
     mo = bike_sale.mrp_production_ids
     check("bike sale opened a manufacturing order", len(mo) == 1 and mo.bom_id.code == "Confirmed recipe", mo.name)
-    pool = {code: sellable(code) for code in ("M-006", "FS-HAGEN-FLAGSHIP-E")}
-    check("bike sale lowered the frameset", pool == {"M-006": 0, "FS-HAGEN-FLAGSHIP-E": 0}, str(pool))
+    pool = {code: sellable(code) for code in ("M-006", "FS-HAGEN-XL")}
+    check("bike sale lowered the frameset", pool == {"M-006": 0, "FS-HAGEN-XL": 0}, str(pool))
 
     # Building the bike as the employee.
     mo_employee = as_employee["mrp.production"].browse(mo.id)
     mo_employee.action_assign()
     finish(mo_employee, "button_mark_done")
     check("employee marked the bike built", mo.state == "done", mo.name)
-    check("build used the parts", on_hand("A62") == 5 and on_hand("A78") == 0 and on_hand("A65") == 1, f"A62={on_hand('A62')} A78={on_hand('A78')} A65={on_hand('A65')}")
+    check("build used the parts", on_hand("A62") == 5 and on_hand("A78") == 1 and on_hand("A65") == 1 and on_hand("A154") == 4,
+          f"A62={on_hand('A62')} A78={on_hand('A78')} A65={on_hand('A65')} A154={on_hand('A154')}")
     delivery = as_employee["stock.picking"].browse(bike_sale.picking_ids.filtered(lambda p: p.picking_type_code == "outgoing").ids)
     delivery.action_assign()
     check("bike delivery is ready", delivery.state == "assigned", delivery.state)

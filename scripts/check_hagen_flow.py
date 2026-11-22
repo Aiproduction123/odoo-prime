@@ -41,11 +41,11 @@ def main():
     company = env.company
     if company.name != "Hagen Group Kft.":
         raise SystemExit(f"company name is {company.name!r}")
-    if company.vat != "25979923-2-41":
+    if company.vat != "25979923-2-43":
         raise SystemExit(f"vat is {company.vat!r}")
     if company.company_registry != "01-09-299788":
         raise SystemExit(f"registry is {company.company_registry!r}")
-    if company.street != "Kecskeméti utca 5." or company.zip != "1053":
+    if company.street != "Öntő utca 5." or company.zip != "1211":
         raise SystemExit(f"seat changed: {company.zip} {company.street}")
     if company.l10n_hu_edi_server_mode != "demo":
         raise SystemExit(f"NAV mode is {company.l10n_hu_edi_server_mode!r}")
@@ -179,8 +179,8 @@ def main():
         (line("Hagen FLAGSHIP", ("01 Colors", "Black"), ("02 Type", "90 Nm Brose Mid-Motor")), "M-006"),
         (line("Hagen XL", ("02 Type", "Non-electric (+ 0.00 €)")), "M-007"),
         (line("Hagen FLAGSHIP", ("01 Colors", "Yellow"), ("02 Type", "Frame set"), ("04 Handlebar", "Flat")), "FS-HAGEN-FLAGSHIP"),
-        (line("Hagen XL", ("02 Type", "Frame set electric")), "FS-HAGEN-XL-E"),
-        (line("Hagen MINI", ("02 Type", "Frame set")), "FS-HAGEN-MINI"),
+        (line("Hagen XL", ("02 Type", "Frame set electric")), "FS-HAGEN-XL"),
+        (line("Hagen MINI", ("02 Type", "Frame set")), None),
         (line("Canopy"), None),
     ]
     for item, expected in cases:
@@ -199,14 +199,18 @@ def main():
     if configured.order_line[:1].product_id.default_code != "M-008":
         raise SystemExit(f"configurator order mapped to {configured.order_line.product_id.mapped('default_code')}")
 
-    # Kit delivery: the Hagen XL electric frameset ships as frame, fork and bearings.
-    frameset = env["product.product"].search([("default_code", "=", "FS-HAGEN-XL-E")], limit=1)
+    # Kit delivery: the Hagen XL frameset ships as frame, fork, bearings, kickstand and steering rod.
+    frameset = env["product.product"].search([("default_code", "=", "FS-HAGEN-XL")], limit=1)
     fork = env["product.product"].search([("default_code", "=", "A65")], limit=1)
     bearing = env["product.product"].search([("default_code", "=", "A96")], limit=1)
-    part = env["product.product"].search([("default_code", "=", "A64")], limit=1)
+    part = env["product.product"].search([("default_code", "=", "A63")], limit=1)
     stock_location = env["stock.warehouse"].search([("company_id", "=", company.id)], limit=1).lot_stock_id
-    env["stock.quant"]._update_available_quantity(fork, stock_location, 1)
-    env["stock.quant"]._update_available_quantity(bearing, stock_location, 4)
+    kit = env["mrp.bom"]._bom_find(frameset, bom_type="phantom")[frameset]
+    for kit_line in kit.bom_line_ids:
+        shortfall = kit_line.product_qty - on_hand(kit_line.product_id)
+        if shortfall > 0:
+            env["stock.quant"]._update_available_quantity(kit_line.product_id, stock_location, shortfall)
+    fork_start, bearing_start = on_hand(fork), on_hand(bearing)
     start = on_hand(part)
     partner = env["res.partner"].create({"name": "Kit deduction test", "country_id": env.ref("base.hu").id})
     sale = env["sale.order"].create({"partner_id": partner.id, "company_id": company.id})
@@ -238,8 +242,8 @@ def main():
     if picking.state != "done":
         raise SystemExit(f"delivery state is {picking.state}")
     deducted = start - on_hand(part)
-    if abs(deducted - 1) > 1e-6 or on_hand(fork) or on_hand(bearing):
-        raise SystemExit(f"A64 deduction was {deducted}, fork {on_hand(fork)}, bearings {on_hand(bearing)}")
+    if abs(deducted - 1) > 1e-6 or fork_start - on_hand(fork) != 1 or bearing_start - on_hand(bearing) != 4:
+        raise SystemExit(f"A63 deduction was {deducted}, fork {on_hand(fork)}, bearings {on_hand(bearing)}")
 
     print(
         "HAGEN FLOW OK",

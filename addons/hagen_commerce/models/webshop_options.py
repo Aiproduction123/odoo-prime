@@ -220,7 +220,8 @@ def _resolve_blurby(name, title, pairs, note):
     frame, guard, label = BLURBY_SIZES[size]
     if size != 'L':
         build['replace'] += [[BLURBY_BASE_FRAME, frame], [BLURBY_BASE_REAR_GUARD, guard]]
-    build['notes'].insert(0, f'Size: {label} ({frame}, rear mudguard {guard} if fitted)')
+    if pairs or size != 'L':
+        build['notes'].insert(0, f'Size: {label} ({frame}, rear mudguard {guard} if fitted)')
     if colour:
         ral = ral_for(colour, note)
         build['notes'].insert(1, f'Frame colour: {colour}' + (f' — {ral}' if ral else ' — RAL not on the Paints tab'))

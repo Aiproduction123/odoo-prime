@@ -39,8 +39,8 @@ class MrpProduction(models.Model):
                 move = move_for(old)
                 target = Product.search([('default_code', '=', new)], limit=1)
                 if not move:
-                    warnings.append(f'{old} is not in the recipe, so it was not swapped for {new}.')
-                elif not target:
+                    continue
+                if not target:
                     warnings.append(f'Part {new} does not exist in Odoo: {old} was left in.')
                 else:
                     move.write({'product_id': target.id, 'product_uom': target.uom_id.id, 'bom_line_id': False})
