@@ -8,3 +8,4 @@ from . import sale_order
 from . import woo_network
 from . import woo_store
 from . import stock
+from . import nav_golive

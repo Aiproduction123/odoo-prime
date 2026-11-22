@@ -5,3 +5,4 @@ access_hagen_woo_store_sales,hagen.woo.store.sales,model_hagen_woo_store,sales_t
 access_hagen_woo_store_system,hagen.woo.store.system,model_hagen_woo_store,base.group_system,1,1,1,1
 access_hagen_bom_import_mrp,hagen.bom.import.mrp,model_hagen_bom_import,mrp.group_mrp_manager,1,1,1,1
 access_hagen_bom_import_system,hagen.bom.import.system,model_hagen_bom_import,base.group_system,1,1,1,1
+access_hagen_nav_golive_system,hagen.nav.golive.system,model_hagen_nav_golive,base.group_system,1,1,1,1

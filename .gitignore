@@ -3,3 +3,4 @@ config/odoo.conf
 __pycache__/
 *.pyc
 .python-version
+data/nav_xsd/

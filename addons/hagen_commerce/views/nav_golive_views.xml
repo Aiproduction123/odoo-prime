@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hagen_nav_golive_form" model="ir.ui.view">
+        <field name="name">hagen.nav.golive.form</field>
+        <field name="model">hagen.nav.golive</field>
+        <field name="arch" type="xml">
+            <form string="NAV go-live">
+                <div class="alert alert-warning" role="alert">
+                    NAV stays in Demo until this form is saved with a confirmed company extract.
+                    If NAV rejects the credentials, nothing changes.
+                </div>
+                <group>
+                    <group string="Now">
+                        <field name="company_id" invisible="1"/>
+                        <field name="current_vat"/>
+                        <field name="current_mode"/>
+                    </group>
+                    <group string="Company extract (cégkivonat)">
+                        <field name="tax_number" widget="radio"/>
+                        <field name="extract_confirmed"/>
+                    </group>
+                </group>
+                <group string="NAV Online Számla technical user (Online Számla → Felhasználók → Technikai felhasználó)">
+                    <field name="l10n_hu_edi_username"/>
+                    <field name="l10n_hu_edi_password" password="True"/>
+                    <field name="l10n_hu_edi_signature_key" password="True"/>
+                    <field name="l10n_hu_edi_replacement_key" password="True"/>
+                    <field name="mode" widget="radio"/>
+                </group>
+                <footer>
+                    <button name="action_switch" type="object" string="Switch NAV" class="btn-primary"
+                            invisible="not extract_confirmed"/>
+                    <button special="cancel" string="Keep Demo"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hagen_nav_golive" model="ir.actions.act_window">
+        <field name="name">NAV go-live</field>
+        <field name="res_model">hagen.nav.golive</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_hagen_nav_golive"
+              name="NAV go-live"
+              parent="account.menu_finance_configuration"
+              action="action_hagen_nav_golive"
+              groups="base.group_system"
+              sequence="99"/>
+</odoo>

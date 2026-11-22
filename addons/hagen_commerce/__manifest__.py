@@ -15,6 +15,7 @@
         'views/woo_store_views.xml',
         'views/bom_import_views.xml',
         'views/product_views.xml',
+        'views/nav_golive_views.xml',
         'data/setup.xml',
     ],
     'post_init_hook': 'post_init_hook',
